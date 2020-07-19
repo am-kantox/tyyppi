@@ -86,10 +86,19 @@ defmodule Tyyppi.T do
     end
   end
 
-  def of?(%Tyyppi.T{definition: definition}, term),
-    do: Tyyppi.T.Matchers.of?(definition, term)
+  defmacro of?(type, term) do
+    quote do
+      %Tyyppi.T{module: module, definition: definition} = Tyyppi.T.parse(unquote(type))
+      Tyyppi.T.Matchers.of?(module, definition, unquote(term))
+    end
+  end
 
   @type test1 :: GenServer.on_start()
-  @type test2 :: %{on_start: test1()}
+  @type test2 :: %{
+          :foo => :ok | {:error, term},
+          :on_start => test1()
+        }
+  @type test3 :: %{required(atom()) => integer()}
+  @type test4 :: %{optional(atom()) => float()}
   # @type test2 :: [bar] when bar: raw()
 end
