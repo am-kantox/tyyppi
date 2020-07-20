@@ -1,4 +1,4 @@
-defmodule Tyyppi.Function do
+defmodule Tyyppi.T.Function do
   @moduledoc """
   Convenience `apply/3` to apply the function _with_ a proper type check
   """

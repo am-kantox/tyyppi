@@ -2,6 +2,9 @@ defmodule Tyyppi.T do
   @moduledoc """
   Raw type wrapper.
   """
+
+  alias Tyyppi.{Stats, T, T.Function}
+
   @type kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
   @type visibility :: :typep | :type | :opaque
   @type simple ::
@@ -74,71 +77,38 @@ defmodule Tyyppi.T do
 
   defmacro parse({{:., _, [module, fun]}, _, params}) do
     quote bind_quoted: [module: module, fun: fun, params: params] do
-      Tyyppi.Stats.type({module, fun, length(params)})
+      Stats.type({module, fun, length(params)})
     end
   end
 
   defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params}) do
     quote bind_quoted: [aliases: aliases, fun: fun, params: params] do
-      Tyyppi.Stats.type({Module.concat(aliases), fun, length(params)})
+      Stats.type({Module.concat(aliases), fun, length(params)})
     end
   end
 
   defmacro of?(type, term) do
     quote do
-      %Tyyppi.T{module: module, definition: definition} = Tyyppi.T.parse(unquote(type))
-      Tyyppi.T.Matchers.of?(module, definition, unquote(term))
+      %T{module: module, definition: definition} = T.parse(unquote(type))
+      T.Matchers.of?(module, definition, unquote(term))
     end
   end
 
   defmacro apply(type, fun, args) do
     quote do
-      %Tyyppi.T{module: module, definition: definition} = Tyyppi.T.parse(unquote(type))
-      Tyyppi.Function.apply(module, definition, unquote(fun), unquote(args))
+      %T{module: module, definition: definition} = T.parse(unquote(type))
+      Function.apply(module, definition, unquote(fun), unquote(args))
     end
   end
 
   defmacro apply(fun, args) do
     quote do
-      with %{module: module, name: fun, arity: arity} <- Map.new(Function.info(unquote(fun))),
+      with %{module: module, name: fun, arity: arity} <-
+             Map.new(Elixir.Function.info(unquote(fun))),
            {:ok, specs} <- Code.Typespec.fetch_specs(module),
            {{fun, arity}, [spec]} <- Enum.find(specs, &match?({{^fun, ^arity}, _}, &1)),
-           do: Tyyppi.Function.apply(module, spec, unquote(fun), unquote(args)),
+           do: Function.apply(module, spec, unquote(fun), unquote(args)),
            else: (result -> {:error, {:no_spec, result}})
     end
   end
-
-  @type test_atom_1 :: atom()
-  @type test_atom_2 :: true
-  @type test_atom_3 :: false | nil
-
-  @type test_remote :: GenServer.on_start()
-
-  @type test_map_1 :: %{
-          :foo => :ok | {:error, term},
-          :on_start => test_remote()
-        }
-  @type test_map_2 :: %{required(atom()) => integer()}
-  @type test_map_3 :: %{optional(atom()) => float()}
-
-  @type test_list_1 :: []
-  @type test_list_2 :: list()
-  @type test_list_3 :: list(pos_integer())
-  @type test_list_4 :: [neg_integer()]
-  @type test_list_5 :: nonempty_list(number())
-  @type test_list_6 :: maybe_improper_list(number(), pid())
-  @type test_list_7 :: nonempty_improper_list(number(), pid())
-  @type test_list_8 :: nonempty_maybe_improper_list(number(), pid())
-
-  @type test_binary_1 :: <<>>
-  @type test_binary_2 :: <<_::5>>
-  @type test_binary_3 :: <<_::_*3>>
-  @type test_binary_4 :: <<_::1, _::_*3>>
-
-  @type test_fun_1 :: (() -> float())
-  @type test_fun_2 :: (integer(), integer() -> integer())
-  @type test_fun_3 :: (... -> integer())
-
-  @spec f(x :: float(), integer()) :: float()
-  def f(x, y), do: x * y
 end

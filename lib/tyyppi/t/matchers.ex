@@ -1,17 +1,20 @@
 defmodule Tyyppi.T.Matchers do
   @moduledoc false
 
+  require Logger
+  alias Tyyppi.Stats
+
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
 
   def of?(module, {:user_type, _, name, params}, term) do
-    %{module: module, definition: definition} = Tyyppi.Stats.type({module, name, length(params)})
+    %{module: module, definition: definition} = Stats.type({module, name, length(params)})
 
     of?(module, definition, term)
   end
 
   def of?(_module, {:remote_type, _, [{:atom, 0, module}, {:atom, 0, name}, params]}, term) do
-    %{module: module, definition: definition} = Tyyppi.Stats.type({module, name, length(params)})
+    %{module: module, definition: definition} = Stats.type({module, name, length(params)})
 
     of?(module, definition, term)
   end
@@ -126,7 +129,7 @@ defmodule Tyyppi.T.Matchers do
   #################### SINK ALL #####################
 
   def of?(module, definition, term) do
-    IO.inspect({module, definition, term}, label: "UNMATCHED")
+    Logger.debug(inspect({module, definition, term}, label: "UNMATCHED"))
     false
   end
 

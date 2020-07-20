@@ -1,16 +1,17 @@
 defmodule Test.Tyyppi.Stats do
   use ExUnit.Case
 
+  alias Tyyppi.{Stats, T}
+
   doctest Tyyppi.Stats
 
   setup_all do
-    {:ok, pid} = Tyyppi.Stats.start_link(callback: &Test.Tyyppi.rehashed/2)
+    {:ok, pid} = Stats.start_link(callback: &Test.Tyyppi.rehashed/2)
     [stats: pid]
   end
 
   test "returns types" do
-    assert %Tyyppi.T{module: String, name: :t, params: [], type: :type} =
-             Tyyppi.Stats.type({String, :t})
+    assert %T{module: String, name: :t, params: [], type: :type} = Stats.type({String, :t})
   end
 
   test "calls rehashed callback" do
@@ -34,10 +35,10 @@ defmodule Test.Tyyppi.Stats do
           |> File.write(beam)
         end
 
-        Tyyppi.Stats.rehash!()
+        Stats.rehash!()
     end
 
-    assert %Tyyppi.T{module: T1, name: :t, params: []} = Tyyppi.Stats.type({T1, :t})
+    assert %T{module: T1, name: :t, params: []} = Stats.type({T1, :t})
 
     :code.purge(T1)
     :code.delete(T1)
