@@ -93,6 +93,10 @@ defmodule Tyyppi.T do
     end
   end
 
+  @type test01 :: atom()
+  @type test02 :: true
+  @type test03 :: false | nil
+
   @type test1 :: GenServer.on_start()
   @type test2 :: %{
           :foo => :ok | {:error, term},

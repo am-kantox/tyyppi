@@ -27,6 +27,9 @@ defmodule Tyyppi.T.Matchers do
   def of?(_, {:type, _, :term, []}, _term), do: true
 
   def of?(_, {:type, _, :atom, []}, atom) when is_atom(atom), do: true
+  def of?(_, {:type, _, true, []}, true), do: true
+  def of?(_, {:type, _, false, []}, false), do: true
+  def of?(_, {:type, _, nil, []}, nil), do: true
   def of?(_, {:type, _, :integer, []}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :float, []}, flt) when is_float(flt), do: true
   def of?(_, {:type, _, :number, []}, num) when is_float(num) or is_integer(num), do: true
