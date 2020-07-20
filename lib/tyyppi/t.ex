@@ -98,6 +98,16 @@ defmodule Tyyppi.T do
     end
   end
 
+  defmacro apply(fun, args) do
+    quote do
+      with %{module: module, name: fun, arity: arity} <- Map.new(Function.info(unquote(fun))),
+           {:ok, specs} <- Code.Typespec.fetch_specs(module),
+           {{fun, arity}, [spec]} <- Enum.find(specs, &match?({{^fun, ^arity}, _}, &1)),
+           do: Tyyppi.Function.apply(module, spec, unquote(fun), unquote(args)),
+           else: (result -> {:error, {:no_spec, result}})
+    end
+  end
+
   @type test_atom_1 :: atom()
   @type test_atom_2 :: true
   @type test_atom_3 :: false | nil
@@ -128,4 +138,7 @@ defmodule Tyyppi.T do
   @type test_fun_1 :: (() -> float())
   @type test_fun_2 :: (integer(), integer() -> integer())
   @type test_fun_3 :: (... -> integer())
+
+  @spec f(x :: float(), integer()) :: float()
+  def f(x, y), do: x * y
 end

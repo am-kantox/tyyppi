@@ -1,11 +1,8 @@
 defmodule Tyyppi.T.Matchers do
   @moduledoc false
 
-  alias Tyyppi.T
-
-  @type union :: [T.t()]
-
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
+  def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
 
   def of?(module, {:user_type, _, name, params}, term) do
     %{module: module, definition: definition} = Tyyppi.Stats.type({module, name, length(params)})
@@ -68,6 +65,7 @@ defmodule Tyyppi.T.Matchers do
 
   ##################### BINARY ######################
 
+  def of?(_module, {:type, _, :binary, []}, term) when is_binary(term), do: true
   def of?(_module, {:type, _, :binary, [{:integer, _, 0}, {:integer, _, 0}]}, ""), do: true
 
   def of?(_module, {:type, _, :binary, [{:integer, _, n}, {:integer, _, 0}]}, term)
@@ -117,6 +115,10 @@ defmodule Tyyppi.T.Matchers do
   end
 
   ###################### UNION ######################
+
+  def of?(_module, {:type, _, :range, [{:integer, _, from}, {:integer, _, to}]}, term)
+      when is_integer(term) and term in from..to,
+      do: true
 
   def of?(module, {:type, _, :union, ts}, term),
     do: Enum.any?(ts, &of?(module, &1, term))

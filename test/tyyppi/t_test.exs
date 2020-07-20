@@ -40,6 +40,11 @@ defmodule Test.Tyyppi.T do
         @type test_fun_2 :: (integer(), integer() -> integer())
         @type test_fun_3 :: (... -> integer())
 
+        @type test_int_1 :: 1
+        @type test_int_2 :: 1..10
+
+        @type test_struct :: %DateTime{}
+
         def f1_1, do: 42.0
         def f1_2, do: 42
         def f1_3, do: :ok
@@ -199,6 +204,22 @@ defmodule Test.Tyyppi.T do
     refute Tyyppi.T.of?(Types.test_binary_4(), :foo)
   end
 
+  test "integers / ranges" do
+    assert Tyyppi.T.of?(Types.test_int_1(), 1)
+    refute Tyyppi.T.of?(Types.test_int_1(), 2)
+    refute Tyyppi.T.of?(Types.test_int_1(), :ok)
+
+    assert Tyyppi.T.of?(Types.test_int_2(), 1)
+    assert Tyyppi.T.of?(Types.test_int_2(), 2)
+    refute Tyyppi.T.of?(Types.test_int_2(), 0)
+    refute Tyyppi.T.of?(Types.test_int_2(), :ok)
+  end
+
+  test "struct" do
+    assert Tyyppi.T.of?(Types.test_struct(), DateTime.utc_now())
+    refute Tyyppi.T.of?(Types.test_struct(), 42)
+  end
+
   test "fun" do
     assert Tyyppi.T.of?(Types.test_fun_1(), fn -> 42.0 end)
     refute Tyyppi.T.of?(Types.test_fun_1(), fn x -> x end)
@@ -228,5 +249,8 @@ defmodule Test.Tyyppi.T do
     end
 
     assert {:error, {:result, 84.0}} = Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_2/1, [2])
+
+    assert {:ok, "foo"} = Tyyppi.T.apply(&Atom.to_string/1, [:foo])
+    assert {:error, {:args, ["foo"]}} = Tyyppi.T.apply(&Atom.to_string/1, ["foo"])
   end
 end
