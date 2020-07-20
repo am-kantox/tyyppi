@@ -91,6 +91,13 @@ defmodule Tyyppi.T do
     end
   end
 
+  defmacro apply(type, fun, args) do
+    quote do
+      %Tyyppi.T{module: module, definition: definition} = Tyyppi.T.parse(unquote(type))
+      Tyyppi.Function.apply(module, definition, unquote(fun), unquote(args))
+    end
+  end
+
   @type test_atom_1 :: atom()
   @type test_atom_2 :: true
   @type test_atom_3 :: false | nil

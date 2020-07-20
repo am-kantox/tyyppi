@@ -36,9 +36,17 @@ defmodule Test.Tyyppi.T do
         @type test_binary_3 :: <<_::_*3>>
         @type test_binary_4 :: <<_::1, _::_*3>>
 
-        @type test_fun_1 :: (() -> type)
-        @type test_fun_2 :: (type1, type2 -> type)
-        @type test_fun_3 :: (... -> type)
+        @type test_fun_1 :: (() -> float())
+        @type test_fun_2 :: (integer(), integer() -> integer())
+        @type test_fun_3 :: (... -> integer())
+
+        def f1_1, do: 42.0
+        def f1_2, do: 42
+        def f1_3, do: :ok
+        def f2_1(x, y), do: x * y
+        def f2_2(x, y), do: x / y
+        def f3_1(x), do: x * 42
+        def f3_2(x), do: x * 42.0
       end
 
     case Code.ensure_compiled(Types) do
@@ -57,6 +65,11 @@ defmodule Test.Tyyppi.T do
 
         Tyyppi.Stats.rehash!()
     end
+
+    on_exit(fn ->
+      :code.purge(Types)
+      :code.delete(Types)
+    end)
 
     {:ok, pid} = Tyyppi.Stats.start_link()
     [stats: pid]
@@ -172,27 +185,48 @@ defmodule Test.Tyyppi.T do
     refute Tyyppi.T.of?(Types.test_binary_2(), "123456")
     refute Tyyppi.T.of?(Types.test_binary_2(), :foo)
 
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_3(), <<>>)
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_3(), <<4::3>>)
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_3(), <<4::3, 5::3>>)
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_3(), <<4::6>>)
-    refute Tyyppi.T.of?(Tyyppi.T.test_binary_3(), <<4::4>>)
-    refute Tyyppi.T.of?(Tyyppi.T.test_binary_3(), :foo)
+    assert Tyyppi.T.of?(Types.test_binary_3(), <<>>)
+    assert Tyyppi.T.of?(Types.test_binary_3(), <<4::3>>)
+    assert Tyyppi.T.of?(Types.test_binary_3(), <<4::3, 5::3>>)
+    assert Tyyppi.T.of?(Types.test_binary_3(), <<4::6>>)
+    refute Tyyppi.T.of?(Types.test_binary_3(), <<4::4>>)
+    refute Tyyppi.T.of?(Types.test_binary_3(), :foo)
 
-    refute Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<>>)
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<4::3>>)
-    assert Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<1::1, 1::1, 1::1>>)
-    refute Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<4::6>>)
-    refute Tyyppi.T.of?(Tyyppi.T.test_binary_4(), :foo)
+    refute Tyyppi.T.of?(Types.test_binary_4(), <<>>)
+    assert Tyyppi.T.of?(Types.test_binary_4(), <<4::3>>)
+    assert Tyyppi.T.of?(Types.test_binary_4(), <<1::1, 1::1, 1::1>>)
+    refute Tyyppi.T.of?(Types.test_binary_4(), <<4::6>>)
+    refute Tyyppi.T.of?(Types.test_binary_4(), :foo)
   end
 
   test "fun" do
-    assert Tyyppi.T.of?(Tyyppi.T.test_fun_1(), fn -> 42.0 end)
-    refute Tyyppi.T.of?(Tyyppi.T.test_fun_1(), fn x -> x end)
-    assert Tyyppi.T.of?(Tyyppi.T.test_fun_2(), fn x, y -> x * y end)
-    refute Tyyppi.T.of?(Tyyppi.T.test_fun_2(), fn x -> x end)
-    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn -> 42.0 end)
-    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn x -> x * 42.0 end)
-    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn x, y -> x * y end)
+    assert Tyyppi.T.of?(Types.test_fun_1(), fn -> 42.0 end)
+    refute Tyyppi.T.of?(Types.test_fun_1(), fn x -> x end)
+    assert Tyyppi.T.of?(Types.test_fun_2(), fn x, y -> x * y end)
+    refute Tyyppi.T.of?(Types.test_fun_2(), fn x -> x end)
+    assert Tyyppi.T.of?(Types.test_fun_3(), fn -> 42.0 end)
+    assert Tyyppi.T.of?(Types.test_fun_3(), fn x -> x * 42.0 end)
+    assert Tyyppi.T.of?(Types.test_fun_3(), fn x, y -> x * y end)
+
+    assert {:ok, 42.0} = Tyyppi.T.apply(Types.test_fun_1(), &Types.f1_1/0, [])
+    assert {:error, {:result, 42}} = Tyyppi.T.apply(Types.test_fun_1(), &Types.f1_2/0, [])
+    assert {:error, {:result, :ok}} = Tyyppi.T.apply(Types.test_fun_1(), &Types.f1_3/0, [])
+    assert {:ok, 4} = Tyyppi.T.apply(Types.test_fun_2(), &Types.f2_1/2, [2, 2])
+    assert {:error, {:arity, 1}} = Tyyppi.T.apply(Types.test_fun_2(), &Types.f2_1/2, [42])
+
+    assert {:error, {:args, [42, 42.0]}} =
+             Tyyppi.T.apply(Types.test_fun_2(), &Types.f2_1/2, [42, 42.0])
+
+    assert {:error, {:result, 1.0}} = Tyyppi.T.apply(Types.test_fun_2(), &Types.f2_2/2, [42, 42])
+
+    assert {:ok, 84} = Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_1/1, [2])
+    assert {:error, {:result, 84.0}} = Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_1/1, [2.0])
+    assert {:error, {:arity, 0}} = Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_1/1, [])
+
+    assert_raise ArithmeticError, fn ->
+      Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_1/1, [:ok])
+    end
+
+    assert {:error, {:result, 84.0}} = Tyyppi.T.apply(Types.test_fun_3(), &Types.f3_2/1, [2])
   end
 end
