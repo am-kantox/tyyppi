@@ -75,13 +75,48 @@ defmodule Tyyppi.T do
 
   defstruct ~w|module source type name params definition|a
 
-  defmacro parse({{:., _, [module, fun]}, _, params}) do
+  defguard is_params(params) when is_list(params) or is_nil(params)
+
+  defmacro parse(fun) when fun in [nil, true, false] do
+    quote do
+      %T{
+        module: nil,
+        name: unquote(fun),
+        source: :preloaded,
+        type: :type,
+        params: [],
+        definition: {:type, 0, unquote(fun), []}
+      }
+    end
+  end
+
+  defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
+    params = if is_nil(params), do: [], else: params
+
+    quote do
+      %T{
+        module: nil,
+        name: unquote(fun),
+        source: :preloaded,
+        type: :type,
+        params: unquote(params),
+        definition: {:type, 0, unquote(fun), unquote(params)}
+      }
+    end
+  end
+
+  defmacro parse({{:., _, [module, fun]}, _, params}) when is_params(params) do
+    params = if is_nil(params), do: [], else: params
+
     quote bind_quoted: [module: module, fun: fun, params: params] do
       Stats.type({module, fun, length(params)})
     end
   end
 
-  defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params}) do
+  defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
+           when is_params(params) do
+    params = if is_nil(params), do: [], else: params
+
     quote bind_quoted: [aliases: aliases, fun: fun, params: params] do
       Stats.type({Module.concat(aliases), fun, length(params)})
     end

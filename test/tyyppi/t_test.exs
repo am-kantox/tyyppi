@@ -94,9 +94,11 @@ defmodule Test.Tyyppi.T do
   end
 
   test "atom" do
+    assert T.of?(atom(), :ok)
     assert T.of?(Types.test_atom_1(), :ok)
     refute T.of?(Types.test_atom_1(), "ok")
 
+    assert T.of?(true, true)
     assert T.of?(Types.test_atom_2(), true)
     refute T.of?(Types.test_atom_2(), :ok)
 
@@ -104,6 +106,12 @@ defmodule Test.Tyyppi.T do
     assert T.of?(Types.test_atom_3(), nil)
     refute T.of?(Types.test_atom_3(), true)
     refute T.of?(Types.test_atom_3(), :ok)
+  end
+
+  test "pid, reference" do
+    assert T.of?(pid(), self())
+    assert T.of?(reference, make_ref())
+    refute T.of?(ref, make_ref())
   end
 
   test "remote" do
