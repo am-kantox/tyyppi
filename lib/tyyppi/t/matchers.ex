@@ -30,6 +30,7 @@ defmodule Tyyppi.T.Matchers do
   def of?(_, {:type, _, true, []}, true), do: true
   def of?(_, {:type, _, false, []}, false), do: true
   def of?(_, {:type, _, nil, []}, nil), do: true
+  def of?(_, {:type, _, nil, []}, []), do: true
   def of?(_, {:type, _, :integer, []}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :float, []}, flt) when is_float(flt), do: true
   def of?(_, {:type, _, :number, []}, num) when is_float(num) or is_integer(num), do: true
@@ -64,6 +65,20 @@ defmodule Tyyppi.T.Matchers do
     |> Enum.zip(Tuple.to_list(term))
     |> Enum.all?(fn {type, term} -> of?(module, type, term) end)
   end
+
+  def of?(_module, {:type, _, :binary, [{:integer, _, 0}, {:integer, _, 0}]}, ""), do: true
+
+  def of?(_module, {:type, _, :binary, [{:integer, _, n}, {:integer, _, 0}]}, term)
+      when is_binary(term) and byte_size(term) == n,
+      do: true
+
+  def of?(_module, {:type, _, :binary, [{:integer, _, 0}, {:integer, _, n}]}, term)
+      when is_bitstring(term) and ceil(bit_size(term) / n) == bit_size(term) / n,
+      do: true
+
+  def of?(_module, {:type, _, :binary, [{:integer, _, ns}, {:integer, _, nu}]}, term)
+      when ns > 0 and nu > 0 and is_bitstring(term) and bit_size(term) == ns * nu,
+      do: true
 
   ###################### MAPS #######################
 

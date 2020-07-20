@@ -29,7 +29,6 @@ defmodule Tyyppi.T do
           | :iter
           | :reference
           | :idn
-          | :t
           | :abstract_expr
           | :atom
           | :a_set
@@ -47,7 +46,6 @@ defmodule Tyyppi.T do
           | :receive
           | :module
           | :orddict
-          | :T
           | :check_schedulers
           | :set
           | :af_atom
@@ -93,22 +91,30 @@ defmodule Tyyppi.T do
     end
   end
 
-  @type test01 :: atom()
-  @type test02 :: true
-  @type test03 :: false | nil
+  @type test_atom_1 :: atom()
+  @type test_atom_2 :: true
+  @type test_atom_3 :: false | nil
 
-  @type test1 :: GenServer.on_start()
-  @type test2 :: %{
+  @type test_remote :: GenServer.on_start()
+
+  @type test_map_1 :: %{
           :foo => :ok | {:error, term},
-          :on_start => test1()
+          :on_start => test_remote()
         }
-  @type test3 :: %{required(atom()) => integer()}
-  @type test4 :: %{optional(atom()) => float()}
-  @type test5 :: list()
-  @type test6 :: list(pos_integer())
-  @type test7 :: [neg_integer()]
-  @type test8 :: nonempty_list(number())
-  @type test9 :: maybe_improper_list(number(), pid())
-  @type test10 :: nonempty_improper_list(number(), pid())
-  @type test11 :: nonempty_maybe_improper_list(number(), pid())
+  @type test_map_2 :: %{required(atom()) => integer()}
+  @type test_map_3 :: %{optional(atom()) => float()}
+
+  @type test_list_1 :: []
+  @type test_list_2 :: list()
+  @type test_list_3 :: list(pos_integer())
+  @type test_list_4 :: [neg_integer()]
+  @type test_list_5 :: nonempty_list(number())
+  @type test_list_6 :: maybe_improper_list(number(), pid())
+  @type test_list_7 :: nonempty_improper_list(number(), pid())
+  @type test_list_8 :: nonempty_maybe_improper_list(number(), pid())
+
+  @type test_binary_1 :: <<>>
+  @type test_binary_2 :: <<_::5>>
+  @type test_binary_3 :: <<_::_*3>>
+  @type test_binary_4 :: <<_::1, _::_*3>>
 end
