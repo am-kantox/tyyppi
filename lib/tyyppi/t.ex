@@ -100,5 +100,11 @@ defmodule Tyyppi.T do
         }
   @type test3 :: %{required(atom()) => integer()}
   @type test4 :: %{optional(atom()) => float()}
-  # @type test2 :: [bar] when bar: raw()
+  @type test5 :: list()
+  @type test6 :: list(pos_integer())
+  @type test7 :: [neg_integer()]
+  @type test8 :: nonempty_list(number())
+  @type test9 :: maybe_improper_list(number(), pid())
+  @type test10 :: nonempty_improper_list(number(), pid())
+  @type test11 :: nonempty_maybe_improper_list(number(), pid())
 end
