@@ -66,6 +66,8 @@ defmodule Tyyppi.T.Matchers do
     |> Enum.all?(fn {type, term} -> of?(module, type, term) end)
   end
 
+  ##################### BINARY ######################
+
   def of?(_module, {:type, _, :binary, [{:integer, _, 0}, {:integer, _, 0}]}, ""), do: true
 
   def of?(_module, {:type, _, :binary, [{:integer, _, n}, {:integer, _, 0}]}, term)
@@ -78,6 +80,16 @@ defmodule Tyyppi.T.Matchers do
 
   def of?(_module, {:type, _, :binary, [{:integer, _, ns}, {:integer, _, nu}]}, term)
       when ns > 0 and nu > 0 and is_bitstring(term) and bit_size(term) == ns * nu,
+      do: true
+
+  ####################### FUN #######################
+
+  def of?(_module, {:type, _, :fun, [{:type, _, :product, args}, _result_type]}, fun)
+      when is_function(fun, length(args)),
+      do: true
+
+  def of?(_module, {:type, _, :fun, [{:type, _, :any}, _result_type]}, fun)
+      when is_function(fun),
       do: true
 
   ###################### MAPS #######################

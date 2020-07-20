@@ -35,6 +35,10 @@ defmodule Test.Tyyppi.T do
         @type test_binary_2 :: <<_::5>>
         @type test_binary_3 :: <<_::_*3>>
         @type test_binary_4 :: <<_::1, _::_*3>>
+
+        @type test_fun_1 :: (() -> type)
+        @type test_fun_2 :: (type1, type2 -> type)
+        @type test_fun_3 :: (... -> type)
       end
 
     case Code.ensure_compiled(Types) do
@@ -180,5 +184,15 @@ defmodule Test.Tyyppi.T do
     assert Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<1::1, 1::1, 1::1>>)
     refute Tyyppi.T.of?(Tyyppi.T.test_binary_4(), <<4::6>>)
     refute Tyyppi.T.of?(Tyyppi.T.test_binary_4(), :foo)
+  end
+
+  test "fun" do
+    assert Tyyppi.T.of?(Tyyppi.T.test_fun_1(), fn -> 42.0 end)
+    refute Tyyppi.T.of?(Tyyppi.T.test_fun_1(), fn x -> x end)
+    assert Tyyppi.T.of?(Tyyppi.T.test_fun_2(), fn x, y -> x * y end)
+    refute Tyyppi.T.of?(Tyyppi.T.test_fun_2(), fn x -> x end)
+    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn -> 42.0 end)
+    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn x -> x * 42.0 end)
+    assert Tyyppi.T.of?(Tyyppi.T.test_fun_3(), fn x, y -> x * y end)
   end
 end

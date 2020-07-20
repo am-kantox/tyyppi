@@ -117,4 +117,8 @@ defmodule Tyyppi.T do
   @type test_binary_2 :: <<_::5>>
   @type test_binary_3 :: <<_::_*3>>
   @type test_binary_4 :: <<_::1, _::_*3>>
+
+  @type test_fun_1 :: (() -> float())
+  @type test_fun_2 :: (integer(), integer() -> integer())
+  @type test_fun_3 :: (... -> integer())
 end
