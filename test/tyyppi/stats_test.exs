@@ -11,7 +11,7 @@ defmodule Test.Tyyppi.Stats do
   end
 
   test "returns types" do
-    assert %T{module: String, name: :t, params: [], type: :type} = Stats.type({String, :t})
+    assert %T{module: String, name: :t, params: [], type: :type} = Stats.type({String, :t, 0})
   end
 
   test "calls rehashed callback" do
@@ -38,7 +38,7 @@ defmodule Test.Tyyppi.Stats do
         Stats.rehash!()
     end
 
-    assert %T{module: T1, name: :t, params: []} = Stats.type({T1, :t})
+    assert %T{module: T1, name: :t, params: []} = Stats.type({T1, :t, 0})
 
     :code.purge(T1)
     :code.delete(T1)

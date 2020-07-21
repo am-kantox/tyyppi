@@ -62,12 +62,10 @@ defmodule Test.Tyyppi.T do
       _ ->
         {:module, mod, beam, _} = Module.create(Types, ast, Macro.Env.location(__ENV__))
 
-        with path when not is_nil(path) <- System.tmp_dir() do
-          Mix.Project.app_path()
-          |> Path.join("ebin")
-          |> Path.join(to_string(mod) <> ".beam")
-          |> File.write(beam)
-        end
+        Mix.Project.app_path()
+        |> Path.join("ebin")
+        |> Path.join(to_string(mod) <> ".beam")
+        |> File.write(beam)
 
         Stats.rehash!()
     end

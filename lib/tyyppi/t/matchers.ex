@@ -23,24 +23,26 @@ defmodule Tyyppi.T.Matchers do
 
   #################### PRIMITIVES ###################
 
-  def of?(_, {:type, _, :any, []}, _term), do: true
-  def of?(_, {:type, _, :term, []}, _term), do: true
+  def of?(_, {:type, _, :any, _}, _term), do: true
+  def of?(_, {:type, _, :term, _}, _term), do: true
 
-  def of?(_, {:type, _, :atom, []}, atom) when is_atom(atom), do: true
-  def of?(_, {:type, _, true, []}, true), do: true
-  def of?(_, {:type, _, false, []}, false), do: true
-  def of?(_, {:type, _, nil, []}, nil), do: true
-  def of?(_, {:type, _, nil, []}, []), do: true
-  def of?(_, {:type, _, :integer, []}, int) when is_integer(int), do: true
-  def of?(_, {:type, _, :float, []}, flt) when is_float(flt), do: true
-  def of?(_, {:type, _, :number, []}, num) when is_float(num) or is_integer(num), do: true
-  def of?(_, {:type, _, :neg_integer, []}, i) when is_integer(i) and i < 0, do: true
-  def of?(_, {:type, _, :pos_integer, []}, i) when is_integer(i) and i > 0, do: true
-  def of?(_, {:type, _, :non_neg_integer, []}, i) when is_integer(i) and i >= 0, do: true
-  def of?(_, {:type, _, :pid, []}, pid) when is_pid(pid), do: true
-  def of?(_, {:type, _, :port, []}, port) when is_port(port), do: true
-  def of?(_, {:type, _, :reference, []}, reference) when is_reference(reference), do: true
-  def of?(_, {:type, _, :map, []}, map) when is_map(map), do: true
+  def of?(_, {:type, _, :atom, _}, atom) when is_atom(atom), do: true
+  def of?(_, {:type, _, true, _}, true), do: true
+  def of?(_, {:type, _, false, _}, false), do: true
+  def of?(_, {:type, _, nil, _}, nil), do: true
+  def of?(_, {:type, _, nil, _}, []), do: true
+  def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
+  def of?(_, {:type, _, :float, _}, flt) when is_float(flt), do: true
+  def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
+  def of?(_, {:type, _, :neg_integer, _}, i) when is_integer(i) and i < 0, do: true
+  def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
+  def of?(_, {:type, _, :non_neg_integer, _}, i) when is_integer(i) and i >= 0, do: true
+  def of?(_, {:type, _, :pid, _}, pid) when is_pid(pid), do: true
+  def of?(_, {:type, _, :port, _}, port) when is_port(port), do: true
+  def of?(_, {:type, _, :reference, _}, reference) when is_reference(reference), do: true
+
+  ##################### LISTS #######################
+
   def of?(module, {:type, _, :list, [type]}, list), do: proper_list?(module, list, type)
 
   def of?(module, {:type, n, :list, []}, list),
@@ -65,6 +67,8 @@ defmodule Tyyppi.T.Matchers do
     |> Enum.zip(Tuple.to_list(term))
     |> Enum.all?(fn {type, term} -> of?(module, type, term) end)
   end
+
+  def of?(module, {:type, _, :keyword, []}, list), do: keyword?(module, list)
 
   ##################### BINARY ######################
 
@@ -94,6 +98,9 @@ defmodule Tyyppi.T.Matchers do
       do: true
 
   ###################### MAPS #######################
+
+  def of?(_, {:type, _, :map, []}, map) when is_map(map), do: true
+  def of?(_, {:type, _, :map, :any}, map) when is_map(map), do: true
 
   def of?(module, {:type, _, :map, types}, term) when is_map(term),
     do: Enum.all?(types, &of?(module, &1, term))
@@ -149,4 +156,6 @@ defmodule Tyyppi.T.Matchers do
 
   defp improper_list?(module, [_ | t], _ht, tt, _maybe?, _empty?), do: of?(module, tt, t)
   defp improper_list?(_module, _, _ht, _tt, _maybe?, _empty?), do: false
+
+  defp keyword?(_module, list), do: Keyword.keyword?(list)
 end

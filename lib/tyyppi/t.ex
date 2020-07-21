@@ -77,48 +77,44 @@ defmodule Tyyppi.T do
 
   defguard is_params(params) when is_list(params) or is_nil(params)
 
-  defmacro parse(fun) when fun in [nil, true, false] do
-    quote do
-      %T{
-        module: nil,
-        name: unquote(fun),
-        source: :preloaded,
-        type: :type,
-        params: [],
-        definition: {:type, 0, unquote(fun), []}
-      }
+  defmacro parse({:|, _, [_, _]} = union) do
+    quote bind_quoted: [union: Macro.escape(union(union))] do
+      Stats.type(union)
+    end
+  end
+
+  defmacro parse({t1, t2}) do
+    quote bind_quoted: [t1: Macro.escape(t1), t2: Macro.escape(t2)] do
+      tuple =
+        [t1, t2]
+        |> Enum.map(&Tyyppi.T.parse(&1).definition)
+        |> List.to_tuple()
+        |> Stats.type()
     end
   end
 
   defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
-    params = if is_nil(params), do: [], else: params
-
-    quote do
-      %T{
-        module: nil,
-        name: unquote(fun),
-        source: :preloaded,
-        type: :type,
-        params: unquote(params),
-        definition: {:type, 0, unquote(fun), unquote(params)}
-      }
+    quote bind_quoted: [fun: fun, params: params || []] do
+      Stats.type({nil, fun, length(params)})
     end
   end
 
   defmacro parse({{:., _, [module, fun]}, _, params}) when is_params(params) do
-    params = if is_nil(params), do: [], else: params
-
-    quote bind_quoted: [module: module, fun: fun, params: params] do
+    quote bind_quoted: [module: module, fun: fun, params: params || []] do
       Stats.type({module, fun, length(params)})
     end
   end
 
   defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
            when is_params(params) do
-    params = if is_nil(params), do: [], else: params
-
-    quote bind_quoted: [aliases: aliases, fun: fun, params: params] do
+    quote bind_quoted: [aliases: aliases, fun: fun, params: params || []] do
       Stats.type({Module.concat(aliases), fun, length(params)})
+    end
+  end
+
+  defmacro parse(any) do
+    quote bind_quoted: [any: any] do
+      Stats.type(any)
     end
   end
 
@@ -146,4 +142,8 @@ defmodule Tyyppi.T do
            else: (result -> {:error, {:no_spec, result}})
     end
   end
+
+  defp union(union, acc \\ [])
+  defp union({:|, _, [t1, t2]}, acc), do: union(t2, [Stats.type(t1).definition | acc])
+  defp union(t, acc), do: :lists.reverse([Stats.type(t).definition | acc])
 end
