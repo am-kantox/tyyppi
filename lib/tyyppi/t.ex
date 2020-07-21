@@ -3,58 +3,58 @@ defmodule Tyyppi.T do
   Raw type wrapper.
   """
 
-  alias Tyyppi.{Stats, T, T.Function}
+  alias Tyyppi.{Function, Matchers, Stats, T}
 
   @type kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
   @type visibility :: :typep | :type | :opaque
   @type simple ::
-          :union
-          | :term
+          nil
+          | :a_function
+          | :a_set
+          | :abstract_expr
+          | :af_atom
+          | :af_clause
+          | :af_lit_atom
+          | :af_variable
+          | :any
+          | :atom
+          | :binary
+          | :boolean
+          | :byte
+          | :check_schedulers
+          | :deflated
+          | :des3_cbc
+          | :filename
+          | :filename_all
+          | :fun
+          | :idn
+          | :input
+          | :integer
+          | :iovec
+          | :iter
+          | :iterator
           | :list
           | :map
-          | :any
-          | :pid
-          | :record
-          | :fun
-          | :tuple
-          | :des3_cbc
-          | :non_neg_integer
           | :maybe_improper_list
-          | :string
-          | :nonempty_string
-          | :af_lit_atom
-          | nil
-          | :filename_all
-          | :integer
-          | :relation
-          | :pos_integer
-          | :binary
-          | :iter
-          | :reference
-          | :idn
-          | :abstract_expr
-          | :atom
-          | :a_set
-          | :byte
-          | :iterator
-          | :iovec
-          | :a_function
-          | :range
-          | :filename
-          | :deflated
-          | :nonempty_list
-          | :input
-          | :boolean
-          | :af_clause
-          | :receive
           | :module
+          | :non_neg_integer
+          | :nonempty_list
+          | :nonempty_string
           | :orddict
-          | :check_schedulers
-          | :set
-          | :af_atom
-          | :af_variable
+          | :pid
+          | :pos_integer
           | :queue
+          | :range
+          | :receive
+          | :record
+          | :reference
+          | :relation
+          | :set
+          | :string
+          | :term
           | :tree
+          | :tuple
+          | :union
 
   @type nested ::
           {kind(), non_neg_integer(), simple()}
@@ -86,7 +86,7 @@ defmodule Tyyppi.T do
 
       union
       |> union!.(union!, [])
-      |> Tyyppi.T.parse_quoted()
+      |> T.parse_quoted()
       |> Stats.type()
     end
   end
@@ -113,7 +113,7 @@ defmodule Tyyppi.T do
   defmacro parse(any) do
     quote bind_quoted: [any: Macro.escape(any)] do
       any
-      |> Tyyppi.T.parse_quoted()
+      |> T.parse_quoted()
       |> Stats.type()
     end
   end
@@ -121,7 +121,7 @@ defmodule Tyyppi.T do
   defmacro of?(type, term) do
     quote do
       %T{module: module, definition: definition} = T.parse(unquote(type))
-      T.Matchers.of?(module, definition, unquote(term))
+      Matchers.of?(module, definition, unquote(term))
     end
   end
 

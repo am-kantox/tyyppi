@@ -1,4 +1,4 @@
-defmodule Tyyppi.T.Matchers do
+defmodule Tyyppi.Matchers do
   @moduledoc false
 
   require Logger

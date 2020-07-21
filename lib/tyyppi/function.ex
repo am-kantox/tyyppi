@@ -1,9 +1,9 @@
-defmodule Tyyppi.T.Function do
+defmodule Tyyppi.Function do
   @moduledoc """
   Convenience `apply/3` to apply the function _with_ a proper type check
   """
 
-  import Tyyppi.T.Matchers, only: [of?: 3]
+  import Tyyppi.Matchers, only: [of?: 3]
 
   def apply(
         module,
