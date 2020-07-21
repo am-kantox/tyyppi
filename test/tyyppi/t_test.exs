@@ -112,6 +112,17 @@ defmodule Test.Tyyppi.T do
     refute T.of?(ref, make_ref())
   end
 
+  test "unions, tuples" do
+    assert T.of?({:ok, pid()} | :error, {:ok, self()})
+    assert T.of?({:ok, pid()} | :error, :error)
+    refute T.of?({:ok, pid()} | :error, :ok)
+
+    assert T.of?({:ok, map()} | keyword, {:ok, %{}})
+    assert T.of?({:ok, map()} | keyword, [{:ok, %{}}])
+    assert T.of?({:ok, map()} | keyword, ok: %{})
+    refute T.of?({:ok, map()} | keyword, %{})
+  end
+
   test "remote" do
     assert T.of?(Types.test_remote(), {:ok, self()})
     assert T.of?(Types.test_remote(), {:error, {:already_started, self()}})

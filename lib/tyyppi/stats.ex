@@ -54,57 +54,20 @@ defmodule Tyyppi.Stats do
   @doc """
   Retrieves the type information for the type given.
   """
-  def type(atom) when is_atom(atom) do
-    %T{
-      module: nil,
-      name: nil,
-      source: :preloaded,
-      type: :type,
-      params: nil,
-      definition: {:atom, 0, atom}
-    }
-  end
-
-  def type(list) when is_list(list) do
-    %T{
-      module: nil,
-      name: nil,
-      source: :preloaded,
-      type: :type,
-      params: nil,
-      definition: {:type, 0, :union, list}
-    }
-  end
-
-  def type({t1, t2}) do
-    %T{
-      module: nil,
-      name: nil,
-      source: :preloaded,
-      type: :type,
-      params: nil,
-      definition: {:type, 0, :tuple, [t1, t2]}
-    }
-  end
-
-  def type({nil, fun, arity}) when is_atom(fun) and is_integer(arity) do
-    params = Macro.generate_arguments(arity, nil)
-
-    %T{
-      module: nil,
-      name: fun,
-      source: :preloaded,
-      type: :type,
-      params: params,
-      definition: {:type, 0, fun, params}
-    }
-  end
-
-  def type({fun, _meta, params}) when is_atom(fun) and (is_list(params) or is_nil(params)),
-    do: type({nil, fun, length(params || [])})
 
   def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
     do: module |> Function.capture(fun, arity) |> type()
+
+  def type(definition) when is_tuple(definition) do
+    %T{
+      module: nil,
+      source: nil,
+      type: :built_in,
+      name: nil,
+      definition: definition,
+      params: []
+    }
+  end
 
   def type(fun) when is_function(fun), do: Map.get(types(), fun)
 

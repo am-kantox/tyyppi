@@ -78,24 +78,22 @@ defmodule Tyyppi.T do
   defguard is_params(params) when is_list(params) or is_nil(params)
 
   defmacro parse({:|, _, [_, _]} = union) do
-    quote bind_quoted: [union: Macro.escape(union(union))] do
-      Stats.type(union)
-    end
-  end
+    quote bind_quoted: [union: Macro.escape(union)] do
+      union! = fn
+        {:|, _, [t1, t2]}, union!, acc -> union!.(t2, union!, [t1 | acc])
+        t, _, acc -> :lists.reverse([t | acc])
+      end
 
-  defmacro parse({t1, t2}) do
-    quote bind_quoted: [t1: Macro.escape(t1), t2: Macro.escape(t2)] do
-      tuple =
-        [t1, t2]
-        |> Enum.map(&Tyyppi.T.parse(&1).definition)
-        |> List.to_tuple()
-        |> Stats.type()
+      union
+      |> union!.(union!, [])
+      |> Tyyppi.T.parse_quoted()
+      |> Stats.type()
     end
   end
 
   defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
-    quote bind_quoted: [fun: fun, params: params || []] do
-      Stats.type({nil, fun, length(params)})
+    quote bind_quoted: [fun: fun, params: params] do
+      Stats.type({:type, 0, fun, params})
     end
   end
 
@@ -113,8 +111,10 @@ defmodule Tyyppi.T do
   end
 
   defmacro parse(any) do
-    quote bind_quoted: [any: any] do
-      Stats.type(any)
+    quote bind_quoted: [any: Macro.escape(any)] do
+      any
+      |> Tyyppi.T.parse_quoted()
+      |> Stats.type()
     end
   end
 
@@ -143,7 +143,15 @@ defmodule Tyyppi.T do
     end
   end
 
-  defp union(union, acc \\ [])
-  defp union({:|, _, [t1, t2]}, acc), do: union(t2, [Stats.type(t1).definition | acc])
-  defp union(t, acc), do: :lists.reverse([Stats.type(t).definition | acc])
+  @doc false
+  def parse_quoted({fun, _meta, params}) when is_atom(fun) and is_params(params),
+    do: {:type, 0, fun, params || []}
+
+  def parse_quoted(atom) when is_atom(atom), do: {:atom, 0, atom}
+
+  def parse_quoted(list) when is_list(list),
+    do: {:type, 0, :union, Enum.map(list, &parse_quoted/1)}
+
+  def parse_quoted(tuple) when is_tuple(tuple),
+    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_quoted/1)}
 end
