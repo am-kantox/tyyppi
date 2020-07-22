@@ -8,5 +8,5 @@ defmodule Test.Tyyppi do
     do: :ok
 
   def rehashed(added, removed),
-    do: Logger.debug("Rehashed: " <> inspect({added, removed}))
+    do: Logger.debug(inspect({added, removed}, label: "[🚱 Rehashed]"))
 end

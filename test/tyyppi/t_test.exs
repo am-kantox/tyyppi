@@ -55,20 +55,7 @@ defmodule Test.Tyyppi.T do
         def f3_2(x), do: x * 42.0
       end
 
-    case Code.ensure_compiled(Types) do
-      {:module, Types} ->
-        :ok
-
-      _ ->
-        {:module, mod, beam, _} = Module.create(Types, ast, Macro.Env.location(__ENV__))
-
-        Mix.Project.app_path()
-        |> Path.join("ebin")
-        |> Path.join(to_string(mod) <> ".beam")
-        |> File.write(beam)
-
-        Stats.rehash!()
-    end
+    Tyyppi.Code.module!(Types, ast)
 
     on_exit(fn ->
       :code.purge(Types)
@@ -269,5 +256,10 @@ defmodule Test.Tyyppi.T do
 
     assert {:ok, "foo"} = T.apply(&Atom.to_string/1, [:foo])
     assert {:error, {:args, ["foo"]}} = T.apply(&Atom.to_string/1, ["foo"])
+  end
+
+  test "String.Char" do
+    assert to_string(T.parse(atom)) == "atom()"
+    assert to_string(T.parse(GenServer.on_start())) == "GenServer.on_start()"
   end
 end

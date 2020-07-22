@@ -136,7 +136,7 @@ defmodule Tyyppi.Matchers do
   #################### SINK ALL #####################
 
   def of?(module, definition, term) do
-    Logger.debug(inspect({module, definition, term}, label: "UNMATCHED"))
+    Logger.debug(inspect({module, definition, term}, label: "[🚰 Matchers.of?/3]"))
     false
   end
 

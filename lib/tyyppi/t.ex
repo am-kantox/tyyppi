@@ -1,9 +1,12 @@
 defmodule Tyyppi.T do
   @moduledoc """
-  Raw type wrapper.
+  Raw type wrapper. All the macros exported by that module are available in `Tyyppi`.
+  Require and use `Tyyppi` instead.
   """
 
   alias Tyyppi.{Function, Matchers, Stats, T}
+
+  require Logger
 
   @type kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
   @type visibility :: :typep | :type | :opaque
@@ -56,66 +59,133 @@ defmodule Tyyppi.T do
           | :tuple
           | :union
 
-  @type nested ::
-          {kind(), non_neg_integer(), simple()}
-          | {kind(), non_neg_integer(), simple(), [nested()]}
-  @type raw :: {kind(), non_neg_integer(), simple() | [nested()], [nested()]}
+  @type ast :: Macro.t()
+  @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
 
   @typedoc """
   The type information as it’s provided by _Elixir_.
   """
   @type t :: %__MODULE__{
-          module: module(),
-          source: binary(),
           type: visibility(),
+          module: module(),
           name: atom(),
-          params: [nested()],
-          definition: raw()
+          params: [ast()],
+          source: binary(),
+          definition: raw() | nil,
+          quoted: ast()
         }
 
-  defstruct ~w|module source type name params definition|a
+  defstruct ~w|type module name params source definition quoted|a
 
-  defguard is_params(params) when is_list(params) or is_nil(params)
+  defguard is_params(params) when is_list(params) or is_atom(params)
 
+  @spec loaded?(T.t()) :: boolean()
+  def loaded?(%T{definition: nil}), do: false
+  def loaded?(%T{}), do: true
+
+  # @spec parse({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) :: Tyyppi.T.t()
+  @doc """
+  Parses the type as by spec and returns its `Tyyppi.T` representation.any()
+
+  _Example:_
+
+      iex> require Tyyppi.T
+      ...> Tyyppi.T.parse(GenServer.on_start()) |> Map.put(:source, nil)
+      %Tyyppi.T{
+        definition: {:type, 700, :union,
+        [
+          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 700, :pid, []}]},
+          {:atom, 0, :ignore},
+          {:type, 0, :tuple,
+            [
+              {:atom, 0, :error},
+              {:type, 700, :union,
+              [
+                {:type, 0, :tuple,
+                  [{:atom, 0, :already_started}, {:type, 700, :pid, []}]},
+                {:type, 700, :term, []}
+              ]}
+            ]}
+        ]},
+        module: GenServer,
+        name: :on_start,
+        params: [],
+        source: nil,
+        quoted: {{:., [], [GenServer, :on_start]}, [], []},
+        type: :type
+      }
+  """
   defmacro parse({:|, _, [_, _]} = union) do
     quote bind_quoted: [union: Macro.escape(union)] do
-      union! = fn
-        {:|, _, [t1, t2]}, union!, acc -> union!.(t2, union!, [t1 | acc])
-        t, _, acc -> :lists.reverse([t | acc])
-      end
-
       union
-      |> union!.(union!, [])
-      |> T.parse_quoted()
+      |> T.union()
+      |> T.parse_definition()
       |> Stats.type()
     end
   end
 
   defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
-    quote bind_quoted: [fun: fun, params: params] do
+    quote bind_quoted: [fun: fun, params: param_names(params)] do
       Stats.type({:type, 0, fun, params})
     end
   end
 
   defmacro parse({{:., _, [module, fun]}, _, params}) when is_params(params) do
-    quote bind_quoted: [module: module, fun: fun, params: params || []] do
-      Stats.type({module, fun, length(params)})
+    params = params |> normalize_params() |> length()
+
+    quote bind_quoted: [module: module, fun: fun, params: params] do
+      Stats.type({module, fun, params})
     end
   end
 
   defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
            when is_params(params) do
-    quote bind_quoted: [aliases: aliases, fun: fun, params: params || []] do
-      Stats.type({Module.concat(aliases), fun, length(params)})
+    params = params |> normalize_params() |> length()
+
+    quote bind_quoted: [aliases: aliases, fun: fun, params: params] do
+      Stats.type({Module.concat(aliases), fun, params})
     end
   end
 
   defmacro parse(any) do
     quote bind_quoted: [any: Macro.escape(any)] do
       any
-      |> T.parse_quoted()
+      |> T.parse_definition()
       |> Stats.type()
     end
+  end
+
+  @spec parse_quoted({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) ::
+          Tyyppi.T.t()
+  @doc false
+  def parse_quoted({:|, _, [_, _]} = union) do
+    union
+    |> T.union()
+    |> T.parse_definition()
+    |> Stats.type()
+  end
+
+  def parse_quoted({fun, _, params}) when is_atom(fun) and is_params(params) do
+    Stats.type({:type, 0, fun, param_names(params)})
+  end
+
+  def parse_quoted({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
+      when is_params(params) do
+    params = params |> normalize_params() |> length()
+    Stats.type({Module.concat(aliases), fun, params})
+  end
+
+  def parse_quoted({{:., _, [module, fun]}, _, params}) when is_params(params) do
+    params = params |> normalize_params() |> length()
+    Stats.type({module, fun, params})
+  end
+
+  def parse_quoted(any) do
+    Logger.debug(inspect(any, label: "[🚰 T.parse_quoted/1]"))
+
+    any
+    |> T.parse_definition()
+    |> Stats.type()
   end
 
   defmacro of?(type, term) do
@@ -144,14 +214,44 @@ defmodule Tyyppi.T do
   end
 
   @doc false
-  def parse_quoted({fun, _meta, params}) when is_atom(fun) and is_params(params),
-    do: {:type, 0, fun, params || []}
+  def parse_definition({fun, _meta, params}) when is_atom(fun) and is_params(params),
+    do: {:type, 0, fun, normalize_params(params)}
 
-  def parse_quoted(atom) when is_atom(atom), do: {:atom, 0, atom}
+  def parse_definition(atom) when is_atom(atom), do: {:atom, 0, atom}
 
-  def parse_quoted(list) when is_list(list),
-    do: {:type, 0, :union, Enum.map(list, &parse_quoted/1)}
+  def parse_definition(list) when is_list(list),
+    do: {:type, 0, :union, Enum.map(list, &parse_definition/1)}
 
-  def parse_quoted(tuple) when is_tuple(tuple),
-    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_quoted/1)}
+  def parse_definition(tuple) when is_tuple(tuple),
+    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)}
+
+  @doc false
+  def union(ast, acc \\ [])
+  def union({:|, _, [t1, t2]}, acc), do: union(t2, [t1 | acc])
+  def union(t, acc), do: Enum.reverse([t | acc])
+
+  @doc false
+  @spec normalize_params([raw()] | any()) :: [raw()]
+  def normalize_params(params) when is_list(params), do: params
+  def normalize_params(_params), do: []
+
+  @doc false
+  @spec param_names([raw()] | any()) :: [atom()]
+  def param_names(params),
+    do: params |> T.normalize_params() |> Enum.map(&elem(&1, 0))
+
+  defimpl String.Chars do
+    @moduledoc false
+    use Boundary, classify_to: Tyyppi.T
+
+    def to_string(%T{module: nil, name: nil, definition: {:type, _, type, params}}) do
+      args = Macro.generate_arguments(length(params || []), nil)
+      ~s|#{type}(#{Enum.join(args, ", ")})|
+    end
+
+    def to_string(%T{module: module, name: name, params: params}) do
+      args = Macro.generate_arguments(length(params || []), module)
+      ~s|#{inspect(module)}.#{name}(#{Enum.join(args, ", ")})|
+    end
+  end
 end

@@ -5,11 +5,9 @@ defmodule Tyyppi.Stats do
   Whether your application often uses the types information, it makes sense
     to cache it in a process state, because gathering it takes some time. In such
     a case your application should start this process in the application’s
-    supervision tree, and call `#{__MODULE__}.rehash!/0` every time when the
+    supervision tree, and call `#{inspect(__MODULE__)}.rehash!/0` every time when the
     new module is compiled in the runtime.
   """
-
-  require Logger
 
   alias Tyyppi.T
 
@@ -46,8 +44,8 @@ defmodule Tyyppi.Stats do
   @spec type(
           (... -> any())
           | atom()
-          | [T.raw()]
-          | {T.raw(), T.raw()}
+          | T.ast()
+          | T.raw()
           | {module(), atom(), list() | nil | non_neg_integer()}
         ) ::
           Tyyppi.T.t()
@@ -58,18 +56,19 @@ defmodule Tyyppi.Stats do
   def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
     do: module |> Function.capture(fun, arity) |> type()
 
+  def type(fun) when is_function(fun), do: Map.get(types(), fun)
+
   def type(definition) when is_tuple(definition) do
     %T{
-      module: nil,
-      source: nil,
       type: :built_in,
+      module: nil,
       name: nil,
+      params: [],
+      source: nil,
       definition: definition,
-      params: []
+      quoted: definition_to_quoted(definition)
     }
   end
-
-  def type(fun) when is_function(fun), do: Map.get(types(), fun)
 
   @spec rehash! :: :ok
   @doc """
@@ -97,17 +96,20 @@ defmodule Tyyppi.Stats do
   @doc false
   def handle_call(:types, _from, state), do: {:reply, state.types, state}
 
-  @spec type_to_map(module(), charlist(), {atom(), {atom(), Tyyppi.T.raw(), [Tyyppi.T.nested()]}}) ::
+  @spec type_to_map(module(), charlist(), {atom(), Tyyppi.T.ast()}) ::
           {(... -> any()), Tyyppi.T.t()}
   defp type_to_map(module, source, {type, {name, definition, params}}) do
+    param_names = T.param_names(params)
+
     {Function.capture(module, name, length(params)),
      %T{
-       module: module,
-       source: to_string(source),
        type: type,
+       module: module,
        name: name,
+       params: params,
+       source: to_string(source),
        definition: definition,
-       params: params
+       quoted: quote(do: unquote(module).unquote(name)(unquote_splicing(param_names)))
      }}
   end
 
@@ -144,4 +146,10 @@ defmodule Tyyppi.Stats do
     callback.(added, removed, result)
     result
   end
+
+  defp definition_to_quoted({:type, _, name, params}),
+    do: quote(do: unquote(name)(unquote_splicing(params)))
+
+  defp definition_to_quoted({:atom, _, name}),
+    do: quote(do: unquote(name))
 end

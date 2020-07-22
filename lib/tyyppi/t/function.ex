@@ -1,7 +1,5 @@
 defmodule Tyyppi.Function do
-  @moduledoc """
-  Convenience `apply/3` to apply the function _with_ a proper type check
-  """
+  @moduledoc false
 
   import Tyyppi.Matchers, only: [of?: 3]
 
