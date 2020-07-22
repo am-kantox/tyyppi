@@ -80,6 +80,37 @@ defmodule Tyyppi.T do
 
   defguard is_params(params) when is_list(params) or is_nil(params)
 
+  # @spec parse({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) :: Tyyppi.T.t()
+  @doc """
+  Parses the type as by spec and returns its `Tyyppi.T` representation.any()
+
+  _Example:_
+
+      iex> require Tyyppi.T
+      ...> Tyyppi.T.parse(GenServer.on_start()) |> Map.put(:source, nil)
+      %Tyyppi.T{
+        definition: {:type, 700, :union,
+        [
+          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 700, :pid, []}]},
+          {:atom, 0, :ignore},
+          {:type, 0, :tuple,
+            [
+              {:atom, 0, :error},
+              {:type, 700, :union,
+              [
+                {:type, 0, :tuple,
+                  [{:atom, 0, :already_started}, {:type, 700, :pid, []}]},
+                {:type, 700, :term, []}
+              ]}
+            ]}
+        ]},
+        module: GenServer,
+        name: :on_start,
+        params: [],
+        source: nil,
+        type: :type
+      }
+  """
   defmacro parse({:|, _, [_, _]} = union) do
     quote bind_quoted: [union: Macro.escape(union)] do
       union
@@ -116,6 +147,8 @@ defmodule Tyyppi.T do
     end
   end
 
+  @spec parse_quoted({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) ::
+          Tyyppi.T.t()
   @doc false
   def parse_quoted({:|, _, [_, _]} = union) do
     union

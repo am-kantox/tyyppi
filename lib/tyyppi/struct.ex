@@ -13,6 +13,28 @@ defmodule Tyyppi.Struct do
       ...>   @type my_type :: :ok | {:error, term()}
       ...>   Tyyppi.Struct.defstruct foo: atom(), bar: GenServer.on_start(), baz: my_type()
       ...> end
+      iex> types = MyStruct.types()
+      ...> types[:foo]
+      %Tyyppi.T{
+        definition: {:type, 0, :atom, []},
+        module: nil,
+        name: nil,
+        params: [],
+        source: nil,
+        type: :built_in
+      }
+      ...> types[:baz]
+      %Tyyppi.T{
+        definition: {:type, 0, :union, [
+          {:atom, 0, :ok},
+          {:type, 0, :tuple, [
+            {:atom, 0, :error}, {:type, 0, :term, []}]}]},
+        module: Test.Tyyppi.Struct.MyStruct,
+        name: :my_type,
+        params: nil,
+        source: nil,
+        type: :type
+      }
   """
   @doc false
   defmacro defstruct(definition) when is_list(definition) do

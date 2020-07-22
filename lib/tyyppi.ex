@@ -11,6 +11,7 @@ defmodule Tyyppi do
   defmacro parse(ast), do: quote(do: T.parse(unquote(ast)))
   defmacro of?(type, term), do: quote(do: T.of?(unquote(type), unquote(term)))
 
+  @spec of_type?(Tyyppi.T.t(), any()) :: boolean()
   def of_type?(%T{module: module, definition: definition}, term),
     do: Matchers.of?(module, definition, term)
 
