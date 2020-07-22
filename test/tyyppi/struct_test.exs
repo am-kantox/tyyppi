@@ -6,8 +6,6 @@ defmodule Test.Tyyppi.Struct do
   doctest Tyyppi.Struct
 
   setup_all do
-    {:ok, pid} = Stats.start_link()
-
     ast =
       quote do
         use Boundary
@@ -23,6 +21,8 @@ defmodule Test.Tyyppi.Struct do
       :code.purge(TypedStruct)
       :code.delete(TypedStruct)
     end)
+
+    {:ok, pid} = Stats.start_link()
 
     [stats: pid]
   end

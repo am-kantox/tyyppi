@@ -32,9 +32,7 @@ defmodule Tyyppi.Struct do
         module: Test.Tyyppi.Struct.MyStruct,
         name: :my_type,
         params: [],
-        quoted: {{:., [{:keep, {"lib/tyyppi/struct.ex", 68}}],
-            [Test.Tyyppi.Struct.MyStruct, :my_type]},
-          [{:keep, {"lib/tyyppi/struct.ex", 68}}], []},
+        quoted: {{:., [], [Test.Tyyppi.Struct.MyStruct, :my_type]}, [], []},
         source: :user_type,
         type: :type
       }
@@ -44,7 +42,7 @@ defmodule Tyyppi.Struct do
     typespec = typespec(definition)
 
     quoted_types =
-      quote location: :keep, bind_quoted: [definition: Macro.escape(definition)] do
+      quote bind_quoted: [definition: Macro.escape(definition)] do
         user_type = fn {type, _, _} ->
           __MODULE__
           |> Module.get_attribute(:type)
@@ -92,7 +90,7 @@ defmodule Tyyppi.Struct do
       """
       def types do
         Enum.map(@quoted_types, fn
-          %T{definition: nil, quoted: quoted} -> Tyyppi.T.parse_quoted(quoted)
+          {k, %Tyyppi.T{definition: nil, quoted: quoted}} -> {k, Tyyppi.T.parse_quoted(quoted)}
           user -> user
         end)
       end
