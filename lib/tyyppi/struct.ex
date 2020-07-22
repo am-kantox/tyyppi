@@ -7,6 +7,10 @@ defmodule Tyyppi.Struct do
   @moduledoc """
   Creates the typed struct with spec bound to each field.
 
+  _Usage:_
+
+  See `Tyyppi.Example` for the example of why and how to use `Tyyppi.Struct`.
+
   _Example:_
 
       iex> defmodule MyStruct do
@@ -79,7 +83,7 @@ defmodule Tyyppi.Struct do
 
       @typedoc ~s"""
       The type describing this struct. This type will be used to validate
-        upserts when called via `Access` amd/or `#{inspect(__MODULE__)}.put/3`,
+        upserts when called via `Access` and/or `#{inspect(__MODULE__)}.put/3`,
         `#{inspect(__MODULE__)}.update/4`.
       """
       @type t :: unquote(typespec)
@@ -99,7 +103,8 @@ defmodule Tyyppi.Struct do
     end
   end
 
-  def typespec(types) do
+  @spec typespec(atom: Macro.t()) :: {:%{}, [], [...]}
+  defp typespec(types) do
     types =
       Enum.map(types, fn
         {k, type} when is_atom(type) ->
