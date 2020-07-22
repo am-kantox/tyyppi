@@ -39,4 +39,5 @@ IEx.configure(
 
 alias Tyyppi.{Stats, T}
 require Tyyppi.T
+require Tyyppi.Struct
 Tyyppi.Stats.start_link()

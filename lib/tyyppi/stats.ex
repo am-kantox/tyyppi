@@ -9,8 +9,6 @@ defmodule Tyyppi.Stats do
     new module is compiled in the runtime.
   """
 
-  require Logger
-
   alias Tyyppi.T
 
   use GenServer
@@ -46,8 +44,8 @@ defmodule Tyyppi.Stats do
   @spec type(
           (... -> any())
           | atom()
-          | [T.raw()]
-          | {T.raw(), T.raw()}
+          | T.nested()
+          | T.raw()
           | {module(), atom(), list() | nil | non_neg_integer()}
         ) ::
           Tyyppi.T.t()
@@ -57,6 +55,8 @@ defmodule Tyyppi.Stats do
 
   def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
     do: module |> Function.capture(fun, arity) |> type()
+
+  def type(fun) when is_function(fun), do: Map.get(types(), fun)
 
   def type(definition) when is_tuple(definition) do
     %T{
@@ -68,8 +68,6 @@ defmodule Tyyppi.Stats do
       params: []
     }
   end
-
-  def type(fun) when is_function(fun), do: Map.get(types(), fun)
 
   @spec rehash! :: :ok
   @doc """

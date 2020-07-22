@@ -1,9 +1,12 @@
 defmodule Tyyppi.T do
   @moduledoc """
-  Raw type wrapper.
+  Raw type wrapper. All the macros exported by that module are available in `Tyyppi`.
+  Require and use `Tyyppi` instead.
   """
 
   alias Tyyppi.{Function, Matchers, Stats, T}
+
+  require Logger
 
   @type kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
   @type visibility :: :typep | :type | :opaque
@@ -79,14 +82,9 @@ defmodule Tyyppi.T do
 
   defmacro parse({:|, _, [_, _]} = union) do
     quote bind_quoted: [union: Macro.escape(union)] do
-      union! = fn
-        {:|, _, [t1, t2]}, union!, acc -> union!.(t2, union!, [t1 | acc])
-        t, _, acc -> :lists.reverse([t | acc])
-      end
-
       union
-      |> union!.(union!, [])
-      |> T.parse_quoted()
+      |> T.union()
+      |> T.parse_definition()
       |> Stats.type()
     end
   end
@@ -113,9 +111,38 @@ defmodule Tyyppi.T do
   defmacro parse(any) do
     quote bind_quoted: [any: Macro.escape(any)] do
       any
-      |> T.parse_quoted()
+      |> T.parse_definition()
       |> Stats.type()
     end
+  end
+
+  @doc false
+  def parse_quoted({:|, _, [_, _]} = union) do
+    union
+    |> T.union()
+    |> T.parse_definition()
+    |> Stats.type()
+  end
+
+  def parse_quoted({fun, _, params}) when is_atom(fun) and is_params(params) do
+    Stats.type({:type, 0, fun, params})
+  end
+
+  def parse_quoted({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
+      when is_params(params) do
+    Stats.type({Module.concat(aliases), fun, length(params)})
+  end
+
+  def parse_quoted({{:., _, [module, fun]}, _, params}) when is_params(params) do
+    Stats.type({module, fun, length(params)})
+  end
+
+  def parse_quoted(any) do
+    Logger.debug(inspect(any, label: "[🚰 T.parse_quoted/1]"))
+
+    any
+    |> T.parse_definition()
+    |> Stats.type()
   end
 
   defmacro of?(type, term) do
@@ -144,14 +171,19 @@ defmodule Tyyppi.T do
   end
 
   @doc false
-  def parse_quoted({fun, _meta, params}) when is_atom(fun) and is_params(params),
+  def parse_definition({fun, _meta, params}) when is_atom(fun) and is_params(params),
     do: {:type, 0, fun, params || []}
 
-  def parse_quoted(atom) when is_atom(atom), do: {:atom, 0, atom}
+  def parse_definition(atom) when is_atom(atom), do: {:atom, 0, atom}
 
-  def parse_quoted(list) when is_list(list),
-    do: {:type, 0, :union, Enum.map(list, &parse_quoted/1)}
+  def parse_definition(list) when is_list(list),
+    do: {:type, 0, :union, Enum.map(list, &parse_definition/1)}
 
-  def parse_quoted(tuple) when is_tuple(tuple),
-    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_quoted/1)}
+  def parse_definition(tuple) when is_tuple(tuple),
+    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)}
+
+  @doc false
+  def union(ast, acc \\ [])
+  def union({:|, _, [t1, t2]}, acc), do: union(t2, [t1 | acc])
+  def union(t, acc), do: Enum.reverse([t | acc])
 end
