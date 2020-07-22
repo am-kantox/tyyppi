@@ -63,7 +63,7 @@ defmodule Tyyppi.T do
   @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
 
   @typedoc """
-  The type information as it’s provided by _Elixir_.
+  The type information as it’s provided by `Code.Typespec` in a human-readable format.
   """
   @type t :: %__MODULE__{
           type: visibility(),
@@ -77,15 +77,17 @@ defmodule Tyyppi.T do
 
   defstruct ~w|type module name params source definition quoted|a
 
+  @doc false
   defguard is_params(params) when is_list(params) or is_atom(params)
 
   @spec loaded?(T.t()) :: boolean()
+  @doc "Returns `true` if the type definition was loaded, `false` otherwise."
   def loaded?(%T{definition: nil}), do: false
   def loaded?(%T{}), do: true
 
   # @spec parse({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) :: Tyyppi.T.t()
   @doc """
-  Parses the type as by spec and returns its `Tyyppi.T` representation.any()
+  Parses the type as by spec and returns its `Tyyppi.T` representation.
 
   _Example:_
 
@@ -115,8 +117,8 @@ defmodule Tyyppi.T do
         type: :type
       }
   """
-  defmacro parse({:|, _, [_, _]} = union) do
-    quote bind_quoted: [union: Macro.escape(union)] do
+  defmacro parse({:|, _, [_, _]} = type) do
+    quote bind_quoted: [union: Macro.escape(type)] do
       union
       |> T.union()
       |> T.parse_definition()
@@ -188,6 +190,21 @@ defmodule Tyyppi.T do
     |> Stats.type()
   end
 
+  @doc """
+  Returns `true` if the `term` passed as the second parameter is of type `type`.
+
+  _Examples:_
+
+      iex> require Tyyppi.T
+      ...> Tyyppi.T.of?(atom(), :ok)
+      true
+      ...> Tyyppi.T.of?(atom(), 42)
+      false
+      ...> Tyyppi.T.of?(GenServer.on_start(), {:error, {:already_started, self()}})
+      true
+      ...> Tyyppi.T.of?(GenServer.on_start(), :foo)
+      false
+  """
   defmacro of?(type, term) do
     quote do
       %T{module: module, definition: definition} = T.parse(unquote(type))
@@ -195,6 +212,35 @@ defmodule Tyyppi.T do
     end
   end
 
+  @doc """
+  Applies the **external** function given as an argument in the form `&Module.fun/arity`
+    (anonymous functions are not supported at the moment) with arguments. Validates
+    the arguments given and the result produced by the call.
+
+  Only named types are supported at the moment.
+
+  If the number of arguments does not fit the arity of the type, returns
+    `{:error, {:arity, n}}` where `n` is the number of arguments passed.
+
+  If arguments did not pass the validation, returns `{:error, {:args, [arg1, arg2, ...]}}`
+    where `argN` are the arguments passed.
+
+  If both arity and types of arguments are ok, _evaluates_ the function and checks the
+    result against the type. Returns `{:ok, result}` _or_ `{:error, {:result, result}}`
+    if the validation did not pass.
+
+  _Example:_
+
+  ```elixir
+  require Tyyppi.T
+  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, foo: 2)
+  #⇒ {:ok,[foo_squared: 4]}
+  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, foo: :ok)
+  #⇒ {:error, {:args, :ok}}
+  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, [])
+  #⇒ {:error, {:arity, 0}}
+  ```
+  """
   defmacro apply(type, fun, args) do
     quote do
       %T{module: module, definition: definition} = T.parse(unquote(type))
@@ -202,6 +248,11 @@ defmodule Tyyppi.T do
     end
   end
 
+  @doc """
+  Applies the fucntion from the current module, validating input arguments and output.
+
+  See `apply/3` for details.
+  """
   defmacro apply(fun, args) do
     quote do
       with %{module: module, name: fun, arity: arity} <-
