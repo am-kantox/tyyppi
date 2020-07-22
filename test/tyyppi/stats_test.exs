@@ -21,22 +21,7 @@ defmodule Test.Tyyppi.Stats do
         @type t :: any()
       end
 
-    case Code.ensure_compiled(T1) do
-      {:module, T1} ->
-        :ok
-
-      _ ->
-        {:module, mod, beam, _} = Module.create(T1, ast, Macro.Env.location(__ENV__))
-
-        with path when not is_nil(path) <- System.tmp_dir() do
-          Mix.Project.app_path()
-          |> Path.join("ebin")
-          |> Path.join(to_string(mod) <> ".beam")
-          |> File.write(beam)
-        end
-
-        Stats.rehash!()
-    end
+    Tyyppi.Code.module!(T1, ast)
 
     assert %T{module: T1, name: :t, params: []} = Stats.type({T1, :t, 0})
 
