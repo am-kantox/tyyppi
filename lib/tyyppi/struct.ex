@@ -7,11 +7,11 @@ defmodule Tyyppi.Struct do
   @moduledoc """
   Creates the typed struct with spec bound to each field.
 
-  _Usage:_
+  ## Usage
 
   See `Tyyppi.Example` for the example of why and how to use `Tyyppi.Struct`.
 
-  _Example:_
+  ### Example
 
       iex> defmodule MyStruct do
       ...>   @type my_type :: :ok | {:error, term()}
@@ -40,6 +40,17 @@ defmodule Tyyppi.Struct do
         source: :user_type,
         type: :type
       }
+
+  ## Upserts
+
+      iex> {ex, pid} = {%Tyyppi.Example{}, :erlang.list_to_pid('<0.0.0>')}
+      iex> Tyyppi.Example.update(ex, foo: :foo, bar: {:ok, pid}, baz: :ok)
+      {:ok, %Tyyppi.Example{
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
+        baz: :ok,
+        foo: :foo}}
+      iex> Tyyppi.Example.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
+      {:error, {:baz, :type}}
   """
   @doc false
   defmacro defstruct(definition) when is_list(definition) do
