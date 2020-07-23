@@ -51,6 +51,19 @@ defmodule Tyyppi.Struct do
         foo: :foo}}
       iex> Tyyppi.Example.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
       {:error, {:baz, :type}}
+
+  ## `Access`
+
+      iex> pid = :erlang.list_to_pid('<0.0.0>')
+      iex> ex = %Tyyppi.Example{foo: :foo, bar: {:ok, pid}, baz: :ok}
+      iex> put_in(ex, [:foo], :foo_sna)
+      %Tyyppi.Example{
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
+        baz: :ok,
+        foo: :foo_sna}
+      iex> put_in(ex, [:foo], 42)
+      ** (ArgumentError) could not put/update key :foo with value 42; reason: validation failed ({:foo, :type})
+
   """
   @doc false
   defmacro defstruct(definition) when is_list(definition) do
@@ -114,6 +127,8 @@ defmodule Tyyppi.Struct do
         end
 
         Kernel.defstruct(@fields)
+
+        use Tyyppi.Access, @fields
       end
 
     validation =
@@ -140,6 +155,7 @@ defmodule Tyyppi.Struct do
             {:"cast_#{field}", 1}
           end)
 
+        @doc false
         @spec do_cast(field :: atom(), value :: any()) :: any()
         defp do_cast(field, value), do: apply(__MODULE__, :"cast_#{field}", [value])
 
