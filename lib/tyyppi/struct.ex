@@ -129,10 +129,38 @@ defmodule Tyyppi.Struct do
             {:"cast_#{field}", 1}
           end)
 
+        @spec do_cast(field :: atom(), value :: any()) :: any()
+        defp do_cast(field, value), do: apply(__MODULE__, :"cast_#{field}", [value])
+
         defoverridable funs
       end
 
-    [declaration, validation, casts]
+    update =
+      quote bind_quoted: [] do
+        @doc """
+        Updates the struct
+        """
+        @spec update(target :: t(), values: keyword()) :: {:ok, t()} | {:error, term()}
+        def update(%__MODULE__{} = target, values) when is_list(values) do
+          types = types()
+
+          values =
+            Enum.reduce_while(values, [], fn {field, value}, acc ->
+              cast = do_cast(field, value)
+
+              if Tyyppi.of_type?(types[field], cast),
+                do: {:cont, [{field, cast} | acc]},
+                else: {:halt, {:error, {field, :type}}}
+            end)
+
+          with update when is_list(update) <- values,
+               candidate = Map.merge(target, Map.new(update)),
+               {:ok, result} <- validate(candidate),
+               do: {:ok, result}
+        end
+      end
+
+    [declaration, validation, casts, update]
   end
 
   @spec typespec(atom: Macro.t()) :: {:%{}, [], [...]}

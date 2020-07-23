@@ -43,4 +43,4 @@ require Tyyppi
 require Tyyppi.T
 require Tyyppi.Struct
 
-# Tyyppi.Stats.start_link()
+Tyyppi.Stats.start_link()
