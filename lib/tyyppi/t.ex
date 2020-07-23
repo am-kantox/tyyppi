@@ -231,9 +231,9 @@ defmodule Tyyppi.T do
   end
 
   @doc """
-  Applies the **external** function given as an argument in the form `&Module.fun/arity`
-    (anonymous functions are not supported at the moment) with arguments. Validates
-    the arguments given and the result produced by the call.
+  **Experimental:** applies the **external** function given as an argument
+    in the form `&Module.fun/arity` or **anonymous** function with arguments.
+    Validates the arguments given and the result produced by the call.
 
   Only named types are supported at the moment.
 
@@ -267,7 +267,7 @@ defmodule Tyyppi.T do
   end
 
   @doc """
-  Applies the fucntion from the current module, validating input arguments and output.
+  Applies the function from the current module, validating input arguments and output.
 
   See `apply/3` for details.
   """

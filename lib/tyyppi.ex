@@ -63,10 +63,17 @@ defmodule Tyyppi do
     do: Matchers.of?(module, definition, term)
 
   @doc """
+  **Experimental:** applies the **local** function given as an argument.
+    Validates the arguments given and the result produced by the call.
+
+    See `apply/3` for details.
+  """
+  defmacro apply(fun, args), do: quote(do: T.apply(unquote(fun), unquote(args)))
+
+  @doc """
   **Experimental:** applies the **external** function given as an argument
-    in the form `&Module.fun/arity` (anonymous functions are not supported
-    at the moment) with arguments. Validates the arguments given and the
-    result produced by the call.
+    in the form `&Module.fun/arity` or **anonymous** function with arguments.
+    Validates the arguments given and the result produced by the call.
 
     _Examples:_
 
@@ -85,8 +92,6 @@ defmodule Tyyppi do
         ...>    fn _ -> 42 end, [:foo])
         {:error, {:result, 42}}
   """
-  defmacro apply(fun, args), do: quote(do: T.apply(unquote(fun), unquote(args)))
-
   defmacro apply(type, fun, args),
     do: quote(do: T.apply(unquote(type), unquote(fun), unquote(args)))
 end
