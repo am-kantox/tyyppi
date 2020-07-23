@@ -70,13 +70,18 @@ defmodule Tyyppi.Stats do
     }
   end
 
-  @spec rehash! :: :ok
+  @spec rehash! :: :ok | {:error, :not_started}
   @doc """
   Rehashes the types information currently available in the system. This function
     should be called after the application has created a module in runtime for this
     module information to appear in the cache.
   """
-  def rehash!, do: GenServer.cast(__MODULE__, :rehash!)
+  def rehash! do
+    case Process.whereis(__MODULE__) do
+      pid when is_pid(pid) -> GenServer.cast(__MODULE__, :rehash!)
+      nil -> {:error, :not_started}
+    end
+  end
 
   @impl GenServer
   @doc false

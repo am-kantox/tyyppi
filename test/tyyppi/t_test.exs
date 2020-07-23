@@ -62,7 +62,8 @@ defmodule Test.Tyyppi.T do
       :code.delete(Types)
     end)
 
-    {:ok, pid} = Stats.start_link()
+    {:error, {:already_started, pid}} = Stats.start_link()
+    Stats.rehash!()
     [stats: pid]
   end
 
@@ -226,6 +227,10 @@ defmodule Test.Tyyppi.T do
   end
 
   test "fun" do
+    assert T.of?((atom() -> binary()), fn a -> to_string(a) end)
+    assert T.of?((atom() -> binary()), &Atom.to_string/1)
+    refute T.of?((atom() -> binary()), fn -> "ok" end)
+
     assert T.of?(Types.test_fun_1(), fn -> 42.0 end)
     refute T.of?(Types.test_fun_1(), fn x -> x end)
     assert T.of?(Types.test_fun_2(), fn x, y -> x * y end)

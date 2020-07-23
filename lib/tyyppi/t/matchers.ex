@@ -89,6 +89,10 @@ defmodule Tyyppi.Matchers do
 
   ####################### FUN #######################
 
+  def of?(_module, {:type, _, :->, [args, _result_type]}, fun)
+      when is_function(fun, length(args)),
+      do: true
+
   def of?(_module, {:type, _, :fun, [{:type, _, :product, args}, _result_type]}, fun)
       when is_function(fun, length(args)),
       do: true
@@ -136,7 +140,7 @@ defmodule Tyyppi.Matchers do
   #################### SINK ALL #####################
 
   def of?(module, definition, term) do
-    Logger.debug(inspect({module, definition, term}, label: "[🚰 Matchers.of?/3]"))
+    Logger.debug("[🚰 Matchers.of?/3]: " <> inspect({module, definition, term}))
     false
   end
 

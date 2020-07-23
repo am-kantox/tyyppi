@@ -22,8 +22,8 @@ defmodule Test.Tyyppi.Struct do
       :code.delete(TypedStruct)
     end)
 
-    {:ok, pid} = Stats.start_link()
-
+    {:error, {:already_started, pid}} = Stats.start_link()
+    Stats.rehash!()
     [stats: pid]
   end
 

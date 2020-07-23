@@ -8,68 +8,71 @@ defmodule Tyyppi.T do
 
   require Logger
 
-  @type kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
-  @type visibility :: :typep | :type | :opaque
-  @type simple ::
-          nil
-          | :a_function
-          | :a_set
-          | :abstract_expr
-          | :af_atom
-          | :af_clause
-          | :af_lit_atom
-          | :af_variable
-          | :any
-          | :atom
-          | :binary
-          | :boolean
-          | :byte
-          | :check_schedulers
-          | :deflated
-          | :des3_cbc
-          | :filename
-          | :filename_all
-          | :fun
-          | :idn
-          | :input
-          | :integer
-          | :iovec
-          | :iter
-          | :iterator
-          | :list
-          | :map
-          | :maybe_improper_list
-          | :module
-          | :non_neg_integer
-          | :nonempty_list
-          | :nonempty_string
-          | :orddict
-          | :pid
-          | :pos_integer
-          | :queue
-          | :range
-          | :receive
-          | :record
-          | :reference
-          | :relation
-          | :set
-          | :string
-          | :term
-          | :tree
-          | :tuple
-          | :union
+  @typep kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
+  @typep visibility :: :typep | :type | :opaque
+  @typep simple ::
+           nil
+           | :a_function
+           | :a_set
+           | :abstract_expr
+           | :af_atom
+           | :af_clause
+           | :af_lit_atom
+           | :af_variable
+           | :any
+           | :atom
+           | :binary
+           | :boolean
+           | :byte
+           | :check_schedulers
+           | :deflated
+           | :des3_cbc
+           | :filename
+           | :filename_all
+           | :fun
+           | :idn
+           | :input
+           | :integer
+           | :iovec
+           | :iter
+           | :iterator
+           | :list
+           | :map
+           | :maybe_improper_list
+           | :module
+           | :non_neg_integer
+           | :nonempty_list
+           | :nonempty_string
+           | :orddict
+           | :pid
+           | :pos_integer
+           | :queue
+           | :range
+           | :receive
+           | :record
+           | :reference
+           | :relation
+           | :set
+           | :string
+           | :term
+           | :tree
+           | :tuple
+           | :union
 
-  @type ast :: Macro.t()
-  @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
+  @typep ast :: Macro.t()
+  @typep raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
 
   @typedoc """
-  The type information as it’s provided by `Code.Typespec` in a human-readable format.
+  The type information in a human-readable format.
+
+  For remote types, it’s gathered from `Code.Typespec`, for built-in like `atom()`
+    ot’s simply constructed on the fly.
   """
   @type t :: %__MODULE__{
           type: visibility(),
           module: module(),
           name: atom(),
-          params: [ast()],
+          params: [atom()],
           source: binary(),
           definition: raw() | nil,
           quoted: ast()
@@ -80,12 +83,11 @@ defmodule Tyyppi.T do
   @doc false
   defguard is_params(params) when is_list(params) or is_atom(params)
 
-  @spec loaded?(T.t()) :: boolean()
+  @spec loaded?(type :: T.t()) :: boolean()
   @doc "Returns `true` if the type definition was loaded, `false` otherwise."
   def loaded?(%T{definition: nil}), do: false
   def loaded?(%T{}), do: true
 
-  # @spec parse({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) :: Tyyppi.T.t()
   @doc """
   Parses the type as by spec and returns its `Tyyppi.T` representation.
 
@@ -126,9 +128,17 @@ defmodule Tyyppi.T do
     end
   end
 
-  defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
-    quote bind_quoted: [fun: fun, params: param_names(params)] do
-      Stats.type({:type, 0, fun, params})
+  defmacro parse([{:->, _, [args, result]}]) do
+    type =
+      case args do
+        [{:..., _, _}] -> {:type, 0, :any}
+        args -> {:type, 0, :product, Enum.map(args, &parse_definition/1)}
+      end
+
+    result = parse_definition(result)
+
+    quote bind_quoted: [type: Macro.escape(type), result: Macro.escape(result)] do
+      Stats.type({:type, 0, :fun, [type, result]})
     end
   end
 
@@ -149,7 +159,15 @@ defmodule Tyyppi.T do
     end
   end
 
+  defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
+    quote bind_quoted: [fun: fun, params: param_names(params)] do
+      Stats.type({:type, 0, fun, params})
+    end
+  end
+
   defmacro parse(any) do
+    Logger.debug("[🚰 T.parse/1]: " <> inspect(any))
+
     quote bind_quoted: [any: Macro.escape(any)] do
       any
       |> T.parse_definition()
@@ -167,10 +185,6 @@ defmodule Tyyppi.T do
     |> Stats.type()
   end
 
-  def parse_quoted({fun, _, params}) when is_atom(fun) and is_params(params) do
-    Stats.type({:type, 0, fun, param_names(params)})
-  end
-
   def parse_quoted({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
       when is_params(params) do
     params = params |> normalize_params() |> length()
@@ -182,8 +196,12 @@ defmodule Tyyppi.T do
     Stats.type({module, fun, params})
   end
 
+  def parse_quoted({fun, _, params}) when is_atom(fun) and is_params(params) do
+    Stats.type({:type, 0, fun, param_names(params)})
+  end
+
   def parse_quoted(any) do
-    Logger.debug(inspect(any, label: "[🚰 T.parse_quoted/1]"))
+    Logger.debug("[🚰 T.parse_quoted/1]: " <> inspect(any))
 
     any
     |> T.parse_definition()
