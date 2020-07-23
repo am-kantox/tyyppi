@@ -67,7 +67,7 @@ defmodule Tyyppi.MixProject do
   defp package do
     [
       name: @app,
-      files: ~w|stuff lib mix.exs README.md LICENSE|,
+      files: ~w|lib .formatter.exs .dialyzer/ignore.exs mix.exs README* LICENSE|,
       maintainers: ["Aleksei Matiushkin"],
       licenses: ["Kantox LTD"],
       links: %{
@@ -79,13 +79,13 @@ defmodule Tyyppi.MixProject do
 
   defp docs do
     [
-      main: "readme",
+      main: "getting-started",
       source_ref: "v#{@version}",
       canonical: "http://hexdocs.pm/#{@app}",
       logo: "stuff/#{@app}-48x48.png",
       source_url: "https://github.com/am-kantox/#{@app}",
       assets: "stuff/images",
-      extras: ~w[README.md],
+      extras: ~w[README.md stuff/getting-started.md],
       groups_for_modules: [
         Internals: [
           Tyyppi.Stats,
