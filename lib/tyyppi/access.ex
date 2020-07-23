@@ -21,18 +21,7 @@ defmodule Tyyppi.Access do
               pop(data, unquote(key))
 
             {get_value, update_value} ->
-              case __MODULE__.update(data, [{unquote(key), update_value}]) do
-                {:ok, data} ->
-                  {get_value, data}
-
-                {:error, reason} ->
-                  raise(ArgumentError,
-                    message:
-                      "could not put/update key :#{unquote(key)} with value #{
-                        inspect(update_value)
-                      }; reason: validation failed (#{inspect(reason)})"
-                  )
-              end
+              {get_value, Tyyppi.Struct.put!(data, unquote(key), update_value)}
           end
         end
       end)

@@ -190,6 +190,43 @@ defmodule Tyyppi.Struct do
     [declaration, validation, casts, update]
   end
 
+  @doc "Puts the value to target under specified key, if passes validation"
+  @spec put(target :: struct, key :: atom(), value :: any()) :: {:ok, struct} | {:error, any()}
+        when struct: %{__struct__: atom()}
+  def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
+
+  @doc "Puts the value to target under specified key, if passes validation, raises otherwise"
+  @spec put!(target :: struct, key :: atom(), value :: any()) :: struct | no_return()
+        when struct: %{__struct__: atom()}
+  def put!(%_type{} = target, key, value) when is_atom(key) do
+    case put(target, key, value) do
+      {:ok, data} ->
+        data
+
+      {:error, reason} ->
+        raise(ArgumentError,
+          message:
+            "could not put/update key :#{key} with value #{inspect(value)}; reason: validation failed (#{
+              inspect(reason)
+            })"
+        )
+    end
+  end
+
+  @doc "Updates the value in target under specified key, if passes validation"
+  @spec update(target :: struct, key :: atom(), updater :: (any() -> any())) ::
+          {:ok, struct} | {:error, any()}
+        when struct: %{__struct__: atom()}
+  def update(%_type{} = target, key, fun) when is_atom(key) and is_function(fun, 1),
+    do: put(target, key, fun.(target[key]))
+
+  @doc "Updates the value in target under specified key, if passes validation, raises otherwise"
+  @spec update!(target :: struct, key :: atom(), updater :: (any() -> any())) ::
+          struct | no_return()
+        when struct: %{__struct__: atom()}
+  def update!(%_type{} = target, key, fun) when is_atom(key) and is_function(fun, 1),
+    do: put!(target, key, fun.(target[key]))
+
   @spec typespec(atom: Macro.t()) :: {:%{}, [], [...]}
   defp typespec(types) do
     Enum.map(types, fn
