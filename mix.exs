@@ -85,7 +85,7 @@ defmodule Tyyppi.MixProject do
       logo: "stuff/#{@app}-48x48.png",
       source_url: "https://github.com/am-kantox/#{@app}",
       assets: "stuff/images",
-      extras: ~w[README.md stuff/getting-started.md],
+      extras: ~w[stuff/getting-started.md],
       groups_for_modules: [
         Internals: [
           Tyyppi.Stats,

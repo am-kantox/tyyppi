@@ -44,6 +44,7 @@ defmodule Tyyppi.Struct do
   @doc false
   defmacro defstruct(definition) when is_list(definition) do
     typespec = typespec(definition)
+    struct_typespec = [{:__struct__, {:__MODULE__, [], Elixir}} | typespec]
 
     quoted_types =
       quote bind_quoted: [definition: Macro.escape(definition)] do
@@ -77,50 +78,78 @@ defmodule Tyyppi.Struct do
         end)
       end
 
-    quote do
-      @quoted_types unquote(quoted_types)
-      @fields Keyword.keys(@quoted_types)
+    declaration =
+      quote do
+        @quoted_types unquote(quoted_types)
+        @fields Keyword.keys(@quoted_types)
 
-      @typedoc ~s"""
-      The type describing this struct. This type will be used to validate
-        upserts when called via `Access` and/or `#{inspect(__MODULE__)}.put/3`,
-        `#{inspect(__MODULE__)}.update/4`.
-      """
-      @type t :: unquote(typespec)
+        @typedoc ~s"""
+        The type describing this struct. This type will be used to validate
+          upserts when called via `Access` and/or `#{inspect(__MODULE__)}.put/3`,
+          `#{inspect(__MODULE__)}.update/4`.
+        """
+        @type t :: %{unquote_splicing(struct_typespec)}
 
-      @doc ~s"""
-      Returns the field types of this struct as keyword of
-        `{field :: atom, type :: Tyyppi.T.t()}` pairs.
-      """
-      def types do
-        Enum.map(@quoted_types, fn
-          {k, %Tyyppi.T{definition: nil, quoted: quoted}} -> {k, Tyyppi.T.parse_quoted(quoted)}
-          user -> user
-        end)
+        @doc ~s"""
+        Returns the field types of this struct as keyword of
+          `{field :: atom, type :: Tyyppi.T.t()}` pairs.
+        """
+        @spec types :: [{atom(), Tyyppi.T.t()}]
+        def types do
+          Enum.map(@quoted_types, fn
+            {k, %Tyyppi.T{definition: nil, quoted: quoted}} -> {k, Tyyppi.T.parse_quoted(quoted)}
+            user -> user
+          end)
+        end
+
+        Kernel.defstruct(@fields)
       end
 
-      Kernel.defstruct(@fields)
-    end
+    validation =
+      quote do
+        @doc """
+        This function is supposed to be overwritten in the implementation in cases
+          when custom validation is required.
+
+        It would be called after all casts and type validations, if the succeeded
+        """
+        @spec validate(t()) :: {:ok, t()} | {:error, term()}
+        def validate(%__MODULE__{} = t), do: {:ok, t}
+
+        defoverridable validate: 1
+      end
+
+    casts =
+      quote bind_quoted: [] do
+        funs =
+          Enum.map(@fields, fn field ->
+            @doc false
+            def unquote(:"cast_#{field}")(value), do: value
+
+            {:"cast_#{field}", 1}
+          end)
+
+        defoverridable funs
+      end
+
+    [declaration, validation, casts]
   end
 
   @spec typespec(atom: Macro.t()) :: {:%{}, [], [...]}
   defp typespec(types) do
-    types =
-      Enum.map(types, fn
-        {k, type} when is_atom(type) ->
-          {k, {type, [], []}}
+    Enum.map(types, fn
+      {k, type} when is_atom(type) ->
+        {k, {type, [], []}}
 
-        {k, {{_, _, _} = module, type}} ->
-          {k, {{:., [], [module, type]}, [], []}}
+      {k, {{_, _, _} = module, type}} ->
+        {k, {{:., [], [module, type]}, [], []}}
 
-        {k, {module, type}} when is_atom(module) and is_atom(type) ->
-          modules = module |> Module.split() |> Enum.map(&:"#{&1}")
-          {k, {{:., [], [{:__aliases__, [alias: false], modules}, type]}, [], []}}
+      {k, {module, type}} when is_atom(module) and is_atom(type) ->
+        modules = module |> Module.split() |> Enum.map(&:"#{&1}")
+        {k, {{:., [], [{:__aliases__, [alias: false], modules}, type]}, [], []}}
 
-        {k, v} ->
-          {k, v}
-      end)
-
-    {:%{}, [], [{:__struct__, {:__MODULE__, [], Elixir}} | types]}
+      {k, v} ->
+        {k, v}
+    end)
   end
 end
