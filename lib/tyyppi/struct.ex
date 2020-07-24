@@ -41,6 +41,17 @@ defmodule Tyyppi.Struct do
         type: :type
       }
 
+  ## Defaults
+
+  Since there is no place for default values in the struct declaration, where types
+    are first class citizens, defaults might be specified through `@defaults` module
+    attribute. Omitted fields there will be considered having `nil` default value.
+
+      iex> %Tyyppi.Example{}
+      %Tyyppi.Example{
+        bar: :erlang.list_to_pid('<0.0.0>'),
+        baz: {:error, :reason}, foo: :default}
+
   ## Upserts
 
       iex> {ex, pid} = {%Tyyppi.Example{}, :erlang.list_to_pid('<0.0.0>')}
@@ -126,7 +137,10 @@ defmodule Tyyppi.Struct do
           end)
         end
 
-        Kernel.defstruct(@fields)
+        defaults = Module.get_attribute(__MODULE__, :defaults, [])
+        struct_declaration = Enum.map(@fields, &{&1, Keyword.get(defaults, &1)})
+
+        Kernel.defstruct(struct_declaration)
 
         use Tyyppi.Access, @fields
       end

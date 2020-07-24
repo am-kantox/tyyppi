@@ -20,5 +20,6 @@ defmodule Tyyppi.Example do
   @typedoc "The user type defined before `defstruct/1` declaration"
   @type my_type :: :ok | {:error, term()}
 
+  @defaults foo: :default, bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}
   defstruct foo: atom(), bar: GenServer.on_start(), baz: my_type()
 end
