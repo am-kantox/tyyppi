@@ -2,8 +2,8 @@ import Config
 
 level =
   case Mix.env() do
-    :test -> :info
     :dev -> :debug
+    _ -> :info
   end
 
 config :logger,
