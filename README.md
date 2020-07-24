@@ -1,4 +1,4 @@
-# Tyyppi  →  [![Kantox ❤ OSS](https://img.shields.io/badge/❤-kantox_oss-informational.svg)](https://shields.io/)  ![Test](https://github.com/am-kantox/tyyppi/workflows/Test/badge.svg)  ![Dialyzer](https://github.com/am-kantox/tyyppi/workflows/Dialyzer/badge.svg)
+# Tyyppi    [![Kantox ❤ OSS](https://img.shields.io/badge/❤-kantox_oss-informational.svg)](https://kantox.com/)  ![Test](https://github.com/am-kantox/tyyppi/workflows/Test/badge.svg)  ![Dialyzer](https://github.com/am-kantox/tyyppi/workflows/Dialyzer/badge.svg)
 
 **Library bringing erlang typespecs to runtime.**
 
