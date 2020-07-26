@@ -59,8 +59,8 @@ defmodule Tyyppi.T do
            | :tuple
            | :union
 
-  @typep ast :: Macro.t()
-  @typep raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
+  @type ast :: Macro.t()
+  @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
 
   @typedoc """
   The type information in a human-readable format.

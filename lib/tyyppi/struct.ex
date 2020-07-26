@@ -129,10 +129,10 @@ defmodule Tyyppi.Struct do
         Returns the field types of this struct as keyword of
           `{field :: atom, type :: Tyyppi.T.t()}` pairs.
         """
-        @spec types :: [{atom(), Tyyppi.T.t()}]
+        @spec types :: [{atom(), T.t()}]
         def types do
           Enum.map(@quoted_types, fn
-            {k, %Tyyppi.T{definition: nil, quoted: quoted}} -> {k, Tyyppi.T.parse_quoted(quoted)}
+            {k, %T{definition: nil, quoted: quoted}} -> {k, T.parse_quoted(quoted)}
             user -> user
           end)
         end
@@ -241,7 +241,7 @@ defmodule Tyyppi.Struct do
   def update!(%_type{} = target, key, fun) when is_atom(key) and is_function(fun, 1),
     do: put!(target, key, fun.(target[key]))
 
-  @spec typespec(atom: Macro.t()) :: {:%{}, [], [...]}
+  @spec typespec(types: [{atom(), T.ast()}]) :: [{atom(), T.ast()}]
   defp typespec(types) do
     Enum.map(types, fn
       {k, type} when is_atom(type) ->
