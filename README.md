@@ -14,4 +14,8 @@ def deps do
 end
 ```
 
+## Changelog
+
+- **`0.3.0`** — use `:ets` for type information when the process was not started
+
 ## [Documentation](https://hexdocs.pm/tyyppi).
