@@ -39,7 +39,12 @@ defmodule Tyyppi.Stats do
   @doc """
   Retrieves all the types information currently available in the system.
   """
-  def types, do: GenServer.call(__MODULE__, :types)
+  def types do
+    case Process.whereis(__MODULE__) do
+      pid when is_pid(pid) -> GenServer.call(__MODULE__, :types)
+      nil -> __MODULE__ |> :ets.info() |> types_from_ets()
+    end
+  end
 
   @spec type(
           (... -> any())
@@ -56,7 +61,12 @@ defmodule Tyyppi.Stats do
   def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
     do: module |> Function.capture(fun, arity) |> type()
 
-  def type(fun) when is_function(fun), do: Map.get(types(), fun)
+  def type(fun) when is_function(fun) do
+    case Process.whereis(__MODULE__) do
+      pid when is_pid(pid) -> __MODULE__ |> GenServer.call(:types) |> Map.get(fun)
+      nil -> __MODULE__ |> :ets.info() |> type_from_ets(fun)
+    end
+  end
 
   def type(definition) when is_tuple(definition) do
     %T{
@@ -70,7 +80,7 @@ defmodule Tyyppi.Stats do
     }
   end
 
-  @spec rehash! :: :ok | {:error, :not_started}
+  @spec rehash! :: :ok
   @doc """
   Rehashes the types information currently available in the system. This function
     should be called after the application has created a module in runtime for this
@@ -78,8 +88,13 @@ defmodule Tyyppi.Stats do
   """
   def rehash! do
     case Process.whereis(__MODULE__) do
-      pid when is_pid(pid) -> GenServer.cast(__MODULE__, :rehash!)
-      nil -> {:error, :not_started}
+      pid when is_pid(pid) ->
+        GenServer.cast(__MODULE__, :rehash!)
+
+      nil ->
+        if :ets.info(__MODULE__) != :undefined, do: :ets.delete(__MODULE__)
+        spawn_link(fn -> types_from_ets(:undefined) end)
+        :ok
     end
   end
 
@@ -157,4 +172,23 @@ defmodule Tyyppi.Stats do
 
   defp definition_to_quoted({:atom, _, name}),
     do: quote(do: unquote(name))
+
+  @spec types_from_ets(:undefined | keyword()) :: info()
+  defp types_from_ets(:undefined) do
+    :ets.new(__MODULE__, [:set, :named_table, :public])
+
+    result = loaded_types(nil, nil)
+    Enum.each(result, &:ets.insert(__MODULE__, &1))
+    result
+  end
+
+  defp types_from_ets(_),
+    do: :ets.foldl(fn {k, v}, acc -> Map.put(acc, k, v) end, %{}, __MODULE__)
+
+  @spec type_from_ets(:undefined | keyword(), (... -> any())) :: Tyyppi.T.t()
+  defp type_from_ets(:undefined, key),
+    do: :undefined |> types_from_ets() |> Map.get(key)
+
+  defp type_from_ets(_, key),
+    do: __MODULE__ |> :ets.select([{{key, :"$1"}, [], [:"$1"]}]) |> List.first()
 end

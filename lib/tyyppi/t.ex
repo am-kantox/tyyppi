@@ -4,6 +4,8 @@ defmodule Tyyppi.T do
   Require and use `Tyyppi` instead.
   """
 
+  use Boundary, deps: [Tyyppi]
+
   alias Tyyppi.{Function, Matchers, Stats, T}
 
   require Logger
@@ -96,18 +98,18 @@ defmodule Tyyppi.T do
       iex> require Tyyppi.T
       ...> Tyyppi.T.parse(GenServer.on_start()) |> Map.put(:source, nil)
       %Tyyppi.T{
-        definition: {:type, 700, :union,
+        definition: {:type, 704, :union,
         [
-          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 700, :pid, []}]},
+          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 704, :pid, []}]},
           {:atom, 0, :ignore},
           {:type, 0, :tuple,
             [
               {:atom, 0, :error},
-              {:type, 700, :union,
+              {:type, 704, :union,
               [
                 {:type, 0, :tuple,
-                  [{:atom, 0, :already_started}, {:type, 700, :pid, []}]},
-                {:type, 700, :term, []}
+                  [{:atom, 0, :already_started}, {:type, 704, :pid, []}]},
+                {:type, 704, :term, []}
               ]}
             ]}
         ]},
