@@ -161,7 +161,7 @@ defmodule Tyyppi.T do
     end
   end
 
-  defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
+  defmacro parse({fun, _, params}) when is_atom(fun) and fun != :{} and is_params(params) do
     quote bind_quoted: [fun: fun, params: param_names(params)] do
       Stats.type({:type, 0, fun, params})
     end
@@ -198,9 +198,8 @@ defmodule Tyyppi.T do
     Stats.type({module, fun, params})
   end
 
-  def parse_quoted({fun, _, params}) when is_atom(fun) and is_params(params) do
-    Stats.type({:type, 0, fun, param_names(params)})
-  end
+  def parse_quoted({fun, _, params}) when is_atom(fun) and fun != :{} and is_params(params),
+    do: Stats.type({:type, 0, fun, param_names(params)})
 
   def parse_quoted(any) do
     Logger.debug("[🚰 T.parse_quoted/1]: " <> inspect(any))
@@ -291,9 +290,11 @@ defmodule Tyyppi.T do
     do: {:type, 0, :union, Enum.map(list, &parse_definition/1)}
 
   def parse_definition(tuple) when is_tuple(tuple) do
-    if Macro.decompose_call(tuple) == :error,
-      do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)},
-      else: parse_quoted(tuple).definition
+    case Macro.decompose_call(tuple) do
+      :error -> {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)}
+      {:{}, list} when is_list(list) -> {:type, 0, :tuple, Enum.map(list, &parse_definition/1)}
+      _ -> parse_quoted(tuple).definition
+    end
   end
 
   @doc false
