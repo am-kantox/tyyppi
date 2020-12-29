@@ -11,7 +11,7 @@ defmodule Tyyppi.T do
   require Logger
 
   @typep kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
-  @typep visibility :: :typep | :type | :opaque
+  @typep visibility :: :typep | :type | :opaque | :built_in
   @typep simple ::
            nil
            | :a_function
