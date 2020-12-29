@@ -285,16 +285,16 @@ defmodule Tyyppi.T do
   end
 
   @doc false
-  def parse_definition({fun, _meta, params}) when is_atom(fun) and is_params(params),
-    do: {:type, 0, fun, normalize_params(params)}
-
   def parse_definition(atom) when is_atom(atom), do: {:atom, 0, atom}
 
   def parse_definition(list) when is_list(list),
     do: {:type, 0, :union, Enum.map(list, &parse_definition/1)}
 
-  def parse_definition(tuple) when is_tuple(tuple),
-    do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)}
+  def parse_definition(tuple) when is_tuple(tuple) do
+    if Macro.decompose_call(tuple) == :error,
+      do: {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)},
+      else: parse_quoted(tuple).definition
+  end
 
   @doc false
   def union(ast, acc \\ [])
@@ -308,8 +308,11 @@ defmodule Tyyppi.T do
 
   @doc false
   @spec param_names([raw()] | any()) :: [atom()]
-  def param_names(params),
-    do: params |> T.normalize_params() |> Enum.map(&elem(&1, 0))
+  def param_names(params) do
+    if Keyword.keyword?(params),
+      do: Keyword.keys(params),
+      else: []
+  end
 
   defimpl String.Chars do
     @moduledoc false
