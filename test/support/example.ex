@@ -22,4 +22,8 @@ defmodule Tyyppi.Example do
 
   @defaults foo: :default, bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}
   defstruct foo: atom(), bar: GenServer.on_start(), baz: my_type()
+
+  def cast_baz(true), do: :ok
+  def cast_baz(false), do: {:error, false}
+  def cast_baz(value), do: value
 end

@@ -61,7 +61,7 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo}}
       iex> Tyyppi.Example.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
-      {:error, {:baz, :type}}
+      {:error, [baz: [type: [expected: "Tyyppi.Example.my_type()", got: 42]]]}
 
   ## `Access`
 
@@ -73,7 +73,7 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo_sna}
       iex> put_in(ex, [:foo], 42)
-      ** (ArgumentError) could not put/update key :foo with value 42; reason: validation failed ({:foo, :type})
+      ** (ArgumentError) could not put/update key :foo with value 42; reason: validation failed ([foo: [type: [expected: "atom()", got: 42]]])
 
   """
   @doc false
@@ -159,49 +159,70 @@ defmodule Tyyppi.Struct do
         defoverridable validate: 1
       end
 
-    casts =
-      quote bind_quoted: [] do
+    casts_and_validates =
+      quote unquote: false do
         funs =
-          Enum.map(@fields, fn field ->
+          Enum.flat_map(@fields, fn field ->
             @doc false
             def unquote(:"cast_#{field}")(value), do: value
 
-            {:"cast_#{field}", 1}
+            @doc false
+            def unquote(:"validate_#{field}")(value), do: {:ok, value}
+
+            [{:"cast_#{field}", 1}, {:"validate_#{field}", 1}]
           end)
 
         @doc false
         @spec do_cast(field :: atom(), value :: any()) :: any()
         defp do_cast(field, value), do: apply(__MODULE__, :"cast_#{field}", [value])
 
+        @doc false
+        @spec do_validate(field :: atom(), value :: any()) :: {:ok, any()} | {:error, any()}
+        defp do_validate(field, value), do: apply(__MODULE__, :"validate_#{field}", [value])
+
         defoverridable funs
       end
 
     update =
-      quote bind_quoted: [] do
+      quote unquote: false do
         @doc """
         Updates the struct
         """
-        @spec update(target :: t(), values: keyword()) :: {:ok, t()} | {:error, term()}
+        @spec update(target :: t(), values :: keyword()) :: {:ok, t()} | {:error, term()}
         def update(%__MODULE__{} = target, values) when is_list(values) do
           types = types()
 
           values =
-            Enum.reduce_while(values, [], fn {field, value}, acc ->
+            Enum.reduce(values, %{result: [], errors: []}, fn {field, value}, acc ->
               cast = do_cast(field, value)
 
-              if Tyyppi.of_type?(types[field], cast),
-                do: {:cont, [{field, cast} | acc]},
-                else: {:halt, {:error, {field, :type}}}
+              acc =
+                if not Tyyppi.of_type?(types[field], cast) do
+                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
+                  %{acc | errors: [error | acc.errors]}
+                else
+                  case do_validate(field, cast) do
+                    {:ok, result} ->
+                      %{acc | result: [{field, cast} | acc.result]}
+
+                    {:error, error} ->
+                      %{
+                        acc
+                        | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
+                      }
+                  end
+                end
             end)
 
-          with update when is_list(update) <- values,
+          with %{result: update, errors: []} <- values,
                candidate = Map.merge(target, Map.new(update)),
                {:ok, result} <- validate(candidate),
-               do: {:ok, result}
+               do: {:ok, result},
+               else: (%{errors: errors} -> {:error, errors})
         end
       end
 
-    [declaration, validation, casts, update]
+    [declaration, validation, casts_and_validates, update]
   end
 
   @doc "Puts the value to target under specified key, if passes validation"
