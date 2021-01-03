@@ -114,7 +114,7 @@ defmodule Tyyppi.Struct do
       end
 
     declaration =
-      quote do
+      quote location: :keep do
         @quoted_types unquote(quoted_types)
         @fields Keyword.keys(@quoted_types)
 
@@ -146,7 +146,7 @@ defmodule Tyyppi.Struct do
       end
 
     validation =
-      quote do
+      quote location: :keep do
         @doc """
         This function is supposed to be overwritten in the implementation in cases
           when custom validation is required.
@@ -160,35 +160,36 @@ defmodule Tyyppi.Struct do
       end
 
     casts_and_validates =
-      quote unquote: false do
+      quote location: :keep, unquote: false do
         funs =
           Enum.flat_map(@fields, fn field ->
             @doc false
-            def unquote(:"cast_#{field}")(value), do: value
+            defp unquote(:"cast_#{field}")(value), do: value
+            @doc false
+            defp do_cast(unquote(field), value), do: unquote(:"cast_#{field}")(value)
 
             @doc false
-            def unquote(:"validate_#{field}")(value), do: {:ok, value}
+            defp unquote(:"validate_#{field}")(value), do: {:ok, value}
+            @doc false
+            defp do_validate(unquote(field), value) do
+              case :erlang.phash2(1, 1) do
+                0 -> unquote(:"validate_#{field}")(value)
+                1 -> {:error, :hack_to_fool_dialyzer}
+              end
+            end
 
             [{:"cast_#{field}", 1}, {:"validate_#{field}", 1}]
           end)
-
-        @doc false
-        @spec do_cast(field :: atom(), value :: any()) :: any()
-        defp do_cast(field, value), do: apply(__MODULE__, :"cast_#{field}", [value])
-
-        @doc false
-        @spec do_validate(field :: atom(), value :: any()) :: {:ok, any()} | {:error, any()}
-        defp do_validate(field, value), do: apply(__MODULE__, :"validate_#{field}", [value])
 
         defoverridable funs
       end
 
     update =
-      quote unquote: false do
+      quote location: :keep, unquote: false do
         @doc """
         Updates the struct
         """
-        @spec update(target :: t(), values :: keyword()) :: {:ok, t()} | {:error, term()}
+        @spec update(target :: t(), values :: keyword()) :: {:ok, t()} | {:error, keyword()}
         def update(%__MODULE__{} = target, values) when is_list(values) do
           types = types()
 
@@ -197,10 +198,7 @@ defmodule Tyyppi.Struct do
               cast = do_cast(field, value)
 
               acc =
-                if not Tyyppi.of_type?(types[field], cast) do
-                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
-                  %{acc | errors: [error | acc.errors]}
-                else
+                if Tyyppi.of_type?(types[field], cast) do
                   case do_validate(field, cast) do
                     {:ok, result} ->
                       %{acc | result: [{field, cast} | acc.result]}
@@ -211,6 +209,9 @@ defmodule Tyyppi.Struct do
                         | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
                       }
                   end
+                else
+                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
+                  %{acc | errors: [error | acc.errors]}
                 end
             end)
 
@@ -226,7 +227,8 @@ defmodule Tyyppi.Struct do
   end
 
   @doc "Puts the value to target under specified key, if passes validation"
-  @spec put(target :: struct, key :: atom(), value :: any()) :: {:ok, struct} | {:error, any()}
+  @spec put(target :: struct, key :: atom(), value :: any()) ::
+          {:ok, struct} | {:error, keyword()}
         when struct: %{__struct__: atom()}
   def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
 
