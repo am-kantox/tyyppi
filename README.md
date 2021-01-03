@@ -16,6 +16,7 @@ end
 
 ## Changelog
 
+- **`0.4.0`** — per-field coercions and validations via `cast_field/1` and `validate_field/1`
 - **`0.3.0`** — use `:ets` for type information when the process was not started
 
 ## [Documentation](https://hexdocs.pm/tyyppi).
