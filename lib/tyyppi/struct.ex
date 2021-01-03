@@ -49,8 +49,7 @@ defmodule Tyyppi.Struct do
 
       iex> %Tyyppi.Example{}
       %Tyyppi.Example{
-        bar: :erlang.list_to_pid('<0.0.0>'),
-        baz: {:error, :reason}, foo: :default}
+        bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}, foo: nil}
 
   ## Upserts
 
@@ -61,7 +60,7 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo}}
       iex> Tyyppi.Example.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
-      {:error, {:baz, :type}}
+      {:error, [baz: [type: [expected: "Tyyppi.Example.my_type()", got: 42]]]}
 
   ## `Access`
 
@@ -73,7 +72,7 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo_sna}
       iex> put_in(ex, [:foo], 42)
-      ** (ArgumentError) could not put/update key :foo with value 42; reason: validation failed ({:foo, :type})
+      ** (ArgumentError) could not put/update key :foo with value 42 ({:error, [foo: [type: [expected: \"atom()\", got: 42]]]})
 
   """
   @doc false
@@ -114,7 +113,7 @@ defmodule Tyyppi.Struct do
       end
 
     declaration =
-      quote do
+      quote location: :keep do
         @quoted_types unquote(quoted_types)
         @fields Keyword.keys(@quoted_types)
 
@@ -146,7 +145,7 @@ defmodule Tyyppi.Struct do
       end
 
     validation =
-      quote do
+      quote location: :keep do
         @doc """
         This function is supposed to be overwritten in the implementation in cases
           when custom validation is required.
@@ -159,70 +158,92 @@ defmodule Tyyppi.Struct do
         defoverridable validate: 1
       end
 
-    casts =
-      quote bind_quoted: [] do
+    casts_and_validates =
+      quote location: :keep, unquote: false do
         funs =
-          Enum.map(@fields, fn field ->
+          Enum.flat_map(@fields, fn field ->
             @doc false
-            def unquote(:"cast_#{field}")(value), do: value
+            defp unquote(:"cast_#{field}")(value), do: value
+            @doc false
+            defp do_cast(unquote(field), value), do: unquote(:"cast_#{field}")(value)
 
-            {:"cast_#{field}", 1}
+            @doc false
+            defp unquote(:"validate_#{field}")(value), do: {:ok, value}
+            @doc false
+            defp do_validate(unquote(field), value) do
+              case :erlang.phash2(1, 1) do
+                0 -> unquote(:"validate_#{field}")(value)
+                1 -> {:error, :hack_to_fool_dialyzer}
+              end
+            end
+
+            [{:"cast_#{field}", 1}, {:"validate_#{field}", 1}]
           end)
-
-        @doc false
-        @spec do_cast(field :: atom(), value :: any()) :: any()
-        defp do_cast(field, value), do: apply(__MODULE__, :"cast_#{field}", [value])
 
         defoverridable funs
       end
 
     update =
-      quote bind_quoted: [] do
+      quote location: :keep, unquote: false do
         @doc """
         Updates the struct
         """
-        @spec update(target :: t(), values: keyword()) :: {:ok, t()} | {:error, term()}
+        @spec update(target :: t(), values :: keyword()) :: {:ok, t()} | {:error, keyword()}
         def update(%__MODULE__{} = target, values) when is_list(values) do
           types = types()
 
           values =
-            Enum.reduce_while(values, [], fn {field, value}, acc ->
+            Enum.reduce(values, %{result: [], errors: []}, fn {field, value}, acc ->
               cast = do_cast(field, value)
 
-              if Tyyppi.of_type?(types[field], cast),
-                do: {:cont, [{field, cast} | acc]},
-                else: {:halt, {:error, {field, :type}}}
+              acc =
+                if Tyyppi.of_type?(types[field], cast) do
+                  case do_validate(field, cast) do
+                    {:ok, result} ->
+                      %{acc | result: [{field, cast} | acc.result]}
+
+                    {:error, error} ->
+                      %{
+                        acc
+                        | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
+                      }
+                  end
+                else
+                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
+                  %{acc | errors: [error | acc.errors]}
+                end
             end)
 
-          with update when is_list(update) <- values,
+          with %{result: update, errors: []} <- values,
                candidate = Map.merge(target, Map.new(update)),
                {:ok, result} <- validate(candidate),
-               do: {:ok, result}
+               do: {:ok, result},
+               else: (%{errors: errors} -> {:error, errors})
         end
       end
 
-    [declaration, validation, casts, update]
+    [declaration, validation, casts_and_validates, update]
   end
 
   @doc "Puts the value to target under specified key, if passes validation"
-  @spec put(target :: struct, key :: atom(), value :: any()) :: {:ok, struct} | {:error, any()}
+  @spec put(target :: struct, key :: atom(), value :: any()) ::
+          {:ok, struct} | {:error, keyword()}
         when struct: %{__struct__: atom()}
   def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
 
   @doc "Puts the value to target under specified key, if passes validation, raises otherwise"
+  @dialyzer {:nowarn_function, put!: 3}
   @spec put!(target :: struct, key :: atom(), value :: any()) :: struct | no_return()
         when struct: %{__struct__: atom()}
   def put!(%_type{} = target, key, value) when is_atom(key) do
-    case put(target, key, value) do
-      {:ok, data} ->
+    case {:erlang.phash2(1, 1), put(target, key, value)} do
+      {0, {:ok, data}} ->
         data
 
-      {:error, reason} ->
+      {_, error} ->
         raise(ArgumentError,
           message:
-            "could not put/update key :#{key} with value #{inspect(value)}; reason: validation failed (#{
-              inspect(reason)
-            })"
+            "could not put/update key :#{key} with value #{inspect(value)} (#{inspect(error)})"
         )
     end
   end
