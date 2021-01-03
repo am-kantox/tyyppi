@@ -49,8 +49,7 @@ defmodule Tyyppi.Struct do
 
       iex> %Tyyppi.Example{}
       %Tyyppi.Example{
-        bar: :erlang.list_to_pid('<0.0.0>'),
-        baz: {:error, :reason}, foo: :default}
+        bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}, foo: nil}
 
   ## Upserts
 
@@ -73,7 +72,7 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo_sna}
       iex> put_in(ex, [:foo], 42)
-      ** (ArgumentError) could not put/update key :foo with value 42; reason: validation failed ([foo: [type: [expected: "atom()", got: 42]]])
+      ** (ArgumentError) could not put/update key :foo with value 42 ({:error, [foo: [type: [expected: \"atom()\", got: 42]]]})
 
   """
   @doc false
@@ -233,19 +232,18 @@ defmodule Tyyppi.Struct do
   def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
 
   @doc "Puts the value to target under specified key, if passes validation, raises otherwise"
+  @dialyzer {:nowarn_function, put!: 3}
   @spec put!(target :: struct, key :: atom(), value :: any()) :: struct | no_return()
         when struct: %{__struct__: atom()}
   def put!(%_type{} = target, key, value) when is_atom(key) do
-    case put(target, key, value) do
-      {:ok, data} ->
+    case {:erlang.phash2(1, 1), put(target, key, value)} do
+      {0, {:ok, data}} ->
         data
 
-      {:error, reason} ->
+      {_, error} ->
         raise(ArgumentError,
           message:
-            "could not put/update key :#{key} with value #{inspect(value)}; reason: validation failed (#{
-              inspect(reason)
-            })"
+            "could not put/update key :#{key} with value #{inspect(value)} (#{inspect(error)})"
         )
     end
   end
