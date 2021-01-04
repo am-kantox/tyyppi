@@ -75,7 +75,7 @@ defmodule Tyyppi.T do
           module: module(),
           name: atom(),
           params: [atom()],
-          source: binary(),
+          source: binary() | nil,
           definition: raw() | nil,
           quoted: ast()
         }

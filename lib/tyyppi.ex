@@ -94,4 +94,12 @@ defmodule Tyyppi do
   """
   defmacro apply(type, fun, args),
     do: quote(do: T.apply(unquote(type), unquote(fun), unquote(args)))
+
+  @doc false
+  @spec void_validation(value) :: {:ok, value} | {:error, any()} when value: any()
+  def void_validation(value), do: {:ok, value}
+
+  @doc false
+  @spec void_coercion(value) :: {:ok, value} | {:error, any()} when value: any()
+  def void_coercion(value), do: {:ok, value}
 end

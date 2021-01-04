@@ -27,10 +27,12 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :term, _}, _term), do: true
 
   def of?(_, {:type, _, :atom, _}, atom) when is_atom(atom), do: true
+  def of?(_, {:type, _, :module, _}, atom) when is_atom(atom), do: true
   def of?(_, {:type, _, true, _}, true), do: true
   def of?(_, {:type, _, false, _}, false), do: true
   def of?(_, {:type, _, nil, _}, nil), do: true
   def of?(_, {:type, _, nil, _}, []), do: true
+  def of?(_, {:type, _, :boolean, _}, bool) when is_boolean(bool), do: true
   def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :float, _}, flt) when is_float(flt), do: true
   def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
@@ -110,9 +112,8 @@ defmodule Tyyppi.Matchers do
     do: Enum.all?(types, &of?(module, &1, term))
 
   def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, term)
-      when is_map(term) do
-    of?(module, type, Map.get(term, name))
-  end
+      when is_map(term),
+      do: of?(module, type, Map.get(term, name))
 
   def of?(module, {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]}, term)
       when is_map(term) and map_size(term) > 0 do
