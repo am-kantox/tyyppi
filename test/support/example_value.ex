@@ -19,4 +19,7 @@ defmodule Tyyppi.ExampleValue do
 
   @defaults foo: V.atom(:ok), bar: V.integer(42)
   defstruct foo: V.t(), bar: V.t()
+
+  def validate_bar(%V{value: value}) when value < 100, do: {:ok, value}
+  def validate_bar(%V{}), do: {:error, "Expected a value to be less than 100"}
 end

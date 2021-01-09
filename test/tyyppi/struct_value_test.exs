@@ -10,8 +10,22 @@ defmodule Test.Tyyppi.StructValue do
     assert %ExampleValue{foo: %Value{value: :atom}} = put_in(ex, [:foo], 'atom')
     assert %ExampleValue{foo: %Value{value: :atom}} = Struct.update!(ex, :foo, fn _ -> 'atom' end)
 
-    assert {:error, [coercion: [message: "Expected atom(), charlist() or binary()", got: 5]]} =
+    assert {:error,
+            [foo: [coercion: [message: "Expected atom(), charlist() or binary()", got: 5]]]} =
              Struct.update(ex, :foo, fn _ -> 5 end)
+
+    v_101 = Value.integer(101)
+
+    assert {:error,
+            [
+              bar: [
+                validation: [
+                  message: "Expected a value to be less than 100",
+                  got: 101,
+                  cast: ^v_101
+                ]
+              ]
+            ]} = Struct.update(ex, :bar, fn _ -> 101 end)
 
     assert_raise BadStructError, "expected a struct named Tyyppi.ExampleValue, got: :baz", fn ->
       put_in(ex, [:baz], 5)

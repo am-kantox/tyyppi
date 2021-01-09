@@ -213,7 +213,7 @@ defmodule Tyyppi.Struct do
               acc =
                 cond do
                   match?(%Tyyppi.Value{}, cast) and is_list(cast[:errors]) ->
-                    %{acc | errors: cast[:errors] ++ acc.errors}
+                    %{acc | errors: [{field, cast[:errors]} | acc.errors]}
 
                   Tyyppi.of_type?(types[field], cast) ->
                     case do_validate(field, cast) do
@@ -223,7 +223,10 @@ defmodule Tyyppi.Struct do
                       {:error, error} ->
                         %{
                           acc
-                          | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
+                          | errors: [
+                              {field, [validation: [message: error, got: value, cast: cast]]}
+                              | acc.errors
+                            ]
                         }
                     end
 
