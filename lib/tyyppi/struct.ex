@@ -196,21 +196,36 @@ defmodule Tyyppi.Struct do
             Enum.reduce(values, %{result: [], errors: []}, fn {field, value}, acc ->
               cast = do_cast(field, value)
 
-              acc =
-                if Tyyppi.of_type?(types[field], cast) do
-                  case do_validate(field, cast) do
-                    {:ok, result} ->
-                      %{acc | result: [{field, cast} | acc.result]}
+              cast =
+                case {Tyyppi.Value.value_type?(types[field]), match?(%Tyyppi.Value{}, cast),
+                      target} do
+                  {true, false, %{^field => %Tyyppi.Value{} = value}} ->
+                    put_in(value, [:value], cast)
 
-                    {:error, error} ->
-                      %{
-                        acc
-                        | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
-                      }
-                  end
-                else
-                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
-                  %{acc | errors: [error | acc.errors]}
+                  _ ->
+                    cast
+                end
+
+              acc =
+                cond do
+                  match?(%Tyyppi.Value{}, cast) and is_list(cast[:errors]) ->
+                    %{acc | errors: cast[:errors] ++ acc.errors}
+
+                  Tyyppi.of_type?(types[field], cast) ->
+                    case do_validate(field, cast) do
+                      {:ok, result} ->
+                        %{acc | result: [{field, cast} | acc.result]}
+
+                      {:error, error} ->
+                        %{
+                          acc
+                          | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
+                        }
+                    end
+
+                  true ->
+                    error = {field, [type: [expected: to_string(types[field]), got: value]]}
+                    %{acc | errors: [error | acc.errors]}
                 end
             end)
 

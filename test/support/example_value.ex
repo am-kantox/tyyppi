@@ -8,7 +8,7 @@ defmodule Tyyppi.ExampleValue do
   import Kernel, except: [defstruct: 1]
   import Tyyppi.Struct, only: [defstruct: 1]
 
-  @defaults foo: Tyyppi.Value.atom_value(), Tyyppi.Value.integer_value()
+  @defaults foo: Tyyppi.Value.atom(:ok), Tyyppi.Value.integer(42)
   defstruct foo: Tyyppi.Value.t(), bar: Tyyppi.Value.t()
   ```
   """

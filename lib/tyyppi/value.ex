@@ -32,12 +32,17 @@ defmodule Tyyppi.Value do
   defmacrop defined,
     do: quote(do: %__MODULE__{__meta__: %{defined?: true}, value: var!(value)})
 
+  defmacrop errors,
+    do: quote(do: %__MODULE__{__meta__: %{defined?: false, errors: var!(errors)}})
+
   defmacrop meta,
     do: quote(do: %__MODULE__{__meta__: var!(meta), value: var!(value)})
 
   @impl Access
   def fetch(defined(), :value), do: {:ok, value}
   def fetch(%__MODULE__{}, :value), do: :error
+  def fetch(errors(), :errors), do: {:ok, errors}
+  def fetch(%__MODULE__{}, :errors), do: :error
 
   @impl Access
   def pop(meta() = data, :value),
@@ -77,13 +82,28 @@ defmodule Tyyppi.Value do
 
   #############################################################################
 
+  @spec value_type?(Tyyppi.T.t()) :: boolean()
+  @doc false
+  def value_type?(%Tyyppi.T{quoted: quoted} = _type),
+    do: Tyyppi.parse(Tyyppi.Value.t()).quoted == quoted
+
+  @spec value?(any()) :: boolean()
+  @doc false
+  def value?(%Tyyppi.Value{}), do: true
+  def value?(_), do: false
+
+  #############################################################################
+
   defmodule Coercions do
     @moduledoc false
 
     @spec atom(value :: any()) :: Tyyppi.Value.either()
     def atom(atom) when is_atom(atom), do: {:ok, atom}
     def atom(binary) when is_binary(binary), do: {:ok, String.to_atom(binary)}
-    def atom(not_atom), do: {:error, "Expected atom() or binary(), got " <> inspect(not_atom)}
+    def atom(charlist) when is_list(charlist), do: {:ok, :erlang.list_to_atom(charlist)}
+
+    def atom(_not_atom),
+      do: {:error, "Expected atom(), charlist() or binary()"}
 
     @spec integer(value :: any()) :: Tyyppi.Value.either()
     def integer(i) when is_integer(i), do: {:ok, i}
@@ -97,8 +117,8 @@ defmodule Tyyppi.Value do
       end
     end
 
-    def integer(not_integer),
-      do: {:error, "Expected number() or binary(), got " <> inspect(not_integer)}
+    def integer(_not_integer),
+      do: {:error, "Expected number() or binary()"}
   end
 
   @spec atom(value :: any()) :: t()
@@ -132,7 +152,7 @@ defmodule Tyyppi.Value do
     end
 
     def inspect(%Tyyppi.Value{value: value}, opts) do
-      concat(["‹?[", to_doc(value, opts), "]›"])
+      concat(["‹✗", to_doc(value, opts), "›"])
     end
   end
 end
