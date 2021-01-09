@@ -15,6 +15,8 @@ defmodule Tyyppi.ExampleValue do
   import Kernel, except: [defstruct: 1]
   import Tyyppi.Struct, only: [defstruct: 1]
 
-  @defaults foo: Tyyppi.Value.atom(:ok), bar: Tyyppi.Value.integer(42)
-  defstruct foo: Tyyppi.Value.t(), bar: Tyyppi.Value.t()
+  alias Tyyppi.Value, as: V
+
+  @defaults foo: V.atom(:ok), bar: V.integer(42)
+  defstruct foo: V.t(), bar: V.t()
 end

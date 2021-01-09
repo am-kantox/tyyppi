@@ -1,7 +1,7 @@
 defmodule Test.Tyyppi.Value do
   use ExUnit.Case
 
-  alias Tyyppi.{Value}
+  alias Tyyppi.Value
 
   setup_all do
     _ast =
