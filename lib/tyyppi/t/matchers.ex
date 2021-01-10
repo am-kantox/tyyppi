@@ -4,6 +4,9 @@ defmodule Tyyppi.Matchers do
   require Logger
   alias Tyyppi.Stats
 
+  defguardp is_timeout(timeout)
+            when timeout == :infinity or (is_integer(timeout) and timeout >= 0)
+
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
 
@@ -27,19 +30,22 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :term, _}, _term), do: true
 
   def of?(_, {:type, _, :atom, _}, atom) when is_atom(atom), do: true
+  def of?(_, {:type, _, :module, _}, atom) when is_atom(atom), do: true
   def of?(_, {:type, _, true, _}, true), do: true
   def of?(_, {:type, _, false, _}, false), do: true
   def of?(_, {:type, _, nil, _}, nil), do: true
   def of?(_, {:type, _, nil, _}, []), do: true
-  def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
+  def of?(_, {:type, _, :boolean, _}, bool) when is_boolean(bool), do: true
   def of?(_, {:type, _, :float, _}, flt) when is_float(flt), do: true
-  def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
+  def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :neg_integer, _}, i) when is_integer(i) and i < 0, do: true
-  def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :non_neg_integer, _}, i) when is_integer(i) and i >= 0, do: true
+  def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
   def of?(_, {:type, _, :pid, _}, pid) when is_pid(pid), do: true
   def of?(_, {:type, _, :port, _}, port) when is_port(port), do: true
+  def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :reference, _}, reference) when is_reference(reference), do: true
+  def of?(_, {:type, _, :timeout, _}, timeout) when is_timeout(timeout), do: true
 
   ##################### LISTS #######################
 
@@ -110,9 +116,8 @@ defmodule Tyyppi.Matchers do
     do: Enum.all?(types, &of?(module, &1, term))
 
   def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, term)
-      when is_map(term) do
-    of?(module, type, Map.get(term, name))
-  end
+      when is_map(term),
+      do: of?(module, type, Map.get(term, name))
 
   def of?(module, {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]}, term)
       when is_map(term) and map_size(term) > 0 do

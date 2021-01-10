@@ -37,10 +37,9 @@ IEx.configure(
     |> IO.chardata_to_string()
 )
 
-alias Tyyppi.{Stats, T}
+alias Tyyppi.{Stats, T, Value, ExampleValue}
 
-require Tyyppi
-require Tyyppi.T
+use Tyyppi
 require Tyyppi.Struct
 
 Tyyppi.Stats.start_link()

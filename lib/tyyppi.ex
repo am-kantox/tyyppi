@@ -94,4 +94,10 @@ defmodule Tyyppi do
   """
   defmacro apply(type, fun, args),
     do: quote(do: T.apply(unquote(type), unquote(fun), unquote(args)))
+
+  @doc false
+  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :void
+
+  @doc false
+  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :void
 end

@@ -7,15 +7,29 @@ defmodule Tyyppi.Access do
 
       Enum.each(fields, fn key ->
         @impl Elixir.Access
+        def fetch(%__MODULE__{unquote(key) => %Tyyppi.Value{value: value}}, unquote(key)),
+          do: {:ok, value}
+
+        @impl Elixir.Access
         def fetch(%__MODULE__{unquote(key) => value}, unquote(key)),
           do: {:ok, value}
 
         @impl Elixir.Access
+        def pop(%__MODULE__{unquote(key) => %Tyyppi.Value{value: value}} = data, unquote(key)),
+          do: {value, %__MODULE__{data | unquote(key) => nil}}
+
+        @impl Elixir.Access
         def pop(%__MODULE__{unquote(key) => value} = data, unquote(key)),
-          do: {value, data}
+          do: {value, %__MODULE__{data | unquote(key) => nil}}
 
         @impl Elixir.Access
         def get_and_update(%type{unquote(key) => value} = data, unquote(key), fun) do
+          value =
+            case value do
+              %Tyyppi.Value{value: value} -> value
+              value -> value
+            end
+
           case fun.(value) do
             :pop ->
               pop(data, unquote(key))

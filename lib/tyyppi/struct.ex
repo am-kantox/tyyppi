@@ -72,12 +72,12 @@ defmodule Tyyppi.Struct do
         baz: :ok,
         foo: :foo_sna}
       iex> put_in(ex, [:foo], 42)
-      ** (ArgumentError) could not put/update key :foo with value 42 ({:error, [foo: [type: [expected: \"atom()\", got: 42]]]})
+      ** (ArgumentError) could not put/update key :foo with value 42 ([foo: [type: [expected: \"atom()\", got: 42]]])
 
   """
   @doc false
   defmacro defstruct(definition) when is_list(definition) do
-    typespec = typespec(definition)
+    typespec = typespec(definition, __CALLER__)
     struct_typespec = [{:__struct__, {:__MODULE__, [], Elixir}} | typespec]
 
     quoted_types =
@@ -131,8 +131,12 @@ defmodule Tyyppi.Struct do
         @spec types :: [{atom(), T.t()}]
         def types do
           Enum.map(@quoted_types, fn
-            {k, %T{definition: nil, quoted: quoted}} -> {k, T.parse_quoted(quoted)}
-            user -> user
+            {k, %T{definition: nil, quoted: quoted}} ->
+              {^k, quoted} = Tyyppi.Struct.typespec({k, quoted}, __ENV__)
+              {k, T.parse_quoted(quoted)}
+
+            user ->
+              user
           end)
         end
 
@@ -196,21 +200,39 @@ defmodule Tyyppi.Struct do
             Enum.reduce(values, %{result: [], errors: []}, fn {field, value}, acc ->
               cast = do_cast(field, value)
 
-              acc =
-                if Tyyppi.of_type?(types[field], cast) do
-                  case do_validate(field, cast) do
-                    {:ok, result} ->
-                      %{acc | result: [{field, cast} | acc.result]}
+              cast =
+                case {Tyyppi.Value.value_type?(types[field]), match?(%Tyyppi.Value{}, cast),
+                      target} do
+                  {true, false, %{^field => %Tyyppi.Value{} = value}} ->
+                    put_in(value, [:value], cast)
 
-                    {:error, error} ->
-                      %{
-                        acc
-                        | errors: [{field, [error: error, got: value, cast: cast]} | acc.errors]
-                      }
-                  end
-                else
-                  error = {field, [type: [expected: to_string(types[field]), got: value]]}
-                  %{acc | errors: [error | acc.errors]}
+                  _ ->
+                    cast
+                end
+
+              acc =
+                cond do
+                  match?(%Tyyppi.Value{}, cast) and is_list(cast[:errors]) ->
+                    %{acc | errors: [{field, cast[:errors]} | acc.errors]}
+
+                  Tyyppi.of_type?(types[field], cast) ->
+                    case do_validate(field, cast) do
+                      {:ok, result} ->
+                        %{acc | result: [{field, cast} | acc.result]}
+
+                      {:error, error} ->
+                        %{
+                          acc
+                          | errors: [
+                              {field, [validation: [message: error, got: value, cast: cast]]}
+                              | acc.errors
+                            ]
+                        }
+                    end
+
+                  true ->
+                    error = {field, [type: [expected: to_string(types[field]), got: value]]}
+                    %{acc | errors: [error | acc.errors]}
                 end
             end)
 
@@ -228,19 +250,19 @@ defmodule Tyyppi.Struct do
   @doc "Puts the value to target under specified key, if passes validation"
   @spec put(target :: struct, key :: atom(), value :: any()) ::
           {:ok, struct} | {:error, keyword()}
-        when struct: %{__struct__: atom()}
+        when struct: %{required(atom()) => any()}
   def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
 
   @doc "Puts the value to target under specified key, if passes validation, raises otherwise"
   @dialyzer {:nowarn_function, put!: 3}
-  @spec put!(target :: struct, key :: atom(), value :: any()) :: struct | no_return()
-        when struct: %{__struct__: atom()}
+  @spec put!(target :: struct, key :: atom(), value :: any()) :: struct
+        when struct: %{required(atom()) => any()}
   def put!(%_type{} = target, key, value) when is_atom(key) do
-    case {:erlang.phash2(1, 1), put(target, key, value)} do
-      {0, {:ok, data}} ->
+    case put(target, key, value) do
+      {:ok, data} ->
         data
 
-      {_, error} ->
+      {:error, error} ->
         raise(ArgumentError,
           message:
             "could not put/update key :#{key} with value #{inspect(value)} (#{inspect(error)})"
@@ -262,21 +284,21 @@ defmodule Tyyppi.Struct do
   def update!(%_type{} = target, key, fun) when is_atom(key) and is_function(fun, 1),
     do: put!(target, key, fun.(target[key]))
 
-  @spec typespec(types: [{atom(), T.ast()}]) :: [{atom(), T.ast()}]
-  defp typespec(types) do
-    Enum.map(types, fn
-      {k, type} when is_atom(type) ->
-        {k, {type, [], []}}
+  @doc false
+  @spec typespec(types :: {atom(), T.ast()} | [{atom(), T.ast()}], Macro.Env.t()) ::
+          {atom(), T.ast()} | [{atom(), T.ast()}]
+  def typespec({k, type}, _env) when is_atom(type), do: {k, {type, [], []}}
 
-      {k, {{_, _, _} = module, type}} ->
-        {k, {{:., [], [module, type]}, [], []}}
+  def typespec({k, {{:., _, [aliases, type]}, _, args}}, env) when is_atom(type),
+    do: {k, {{:., [], [Macro.expand(aliases, env), type]}, [], args}}
 
-      {k, {module, type}} when is_atom(module) and is_atom(type) ->
-        modules = module |> Module.split() |> Enum.map(&:"#{&1}")
-        {k, {{:., [], [{:__aliases__, [alias: false], modules}, type]}, [], []}}
-
-      {k, v} ->
-        {k, v}
-    end)
+  def typespec({k, {module, type}}, env) when is_atom(module) and is_atom(type) do
+    modules = module |> Module.split() |> Enum.map(&:"#{&1}")
+    {k, {{:., [], [Macro.expand({:__aliases__, [], modules}, env), type]}, [], []}}
   end
+
+  def typespec({k, type}, _env), do: {k, type}
+
+  def typespec(types, env) when is_list(types),
+    do: Enum.map(types, &typespec(&1, env))
 end
