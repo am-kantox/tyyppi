@@ -1,4 +1,6 @@
 defmodule Test.Tyyppi.Rehasher do
+  @moduledoc false
+
   require Logger
   use Boundary
 
