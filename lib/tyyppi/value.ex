@@ -87,6 +87,9 @@ defmodule Tyyppi.Value do
   def value_type?(%Tyyppi.T{quoted: quoted} = _type),
     do: Tyyppi.parse(Tyyppi.Value.t()).quoted == quoted
 
+  @doc "Helper guard to match Value instances"
+  defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
+
   @spec value?(any()) :: boolean()
   @doc false
   def value?(%Tyyppi.Value{}), do: true
@@ -97,6 +100,9 @@ defmodule Tyyppi.Value do
   defmodule Coercions do
     @moduledoc false
 
+    @spec void(any()) :: Tyyppi.Value.either()
+    def void(value), do: {:ok, value}
+
     @spec atom(value :: any()) :: Tyyppi.Value.either()
     def atom(atom) when is_atom(atom), do: {:ok, atom}
     def atom(binary) when is_binary(binary), do: {:ok, String.to_atom(binary)}
@@ -104,6 +110,19 @@ defmodule Tyyppi.Value do
 
     def atom(_not_atom),
       do: {:error, "Expected atom(), charlist() or binary()"}
+
+    @spec string(value :: any()) :: Tyyppi.Value.either()
+    def string(value) do
+      case String.Chars.impl_for(value) do
+        nil -> {:error, "protocol String.Chars must be implemented for the target"}
+        impl -> {:ok, impl.to_string(value)}
+      end
+    end
+
+    @spec boolean(value :: any()) :: Tyyppi.Value.either()
+    def boolean(bool) when is_boolean(bool), do: {:ok, bool}
+    def boolean(nil), do: {:ok, false}
+    def boolean(_not_nil), do: {:ok, true}
 
     @spec integer(value :: any()) :: Tyyppi.Value.either()
     def integer(i) when is_integer(i), do: {:ok, i}
@@ -121,6 +140,35 @@ defmodule Tyyppi.Value do
       do: {:error, "Expected number() or binary()"}
   end
 
+  #############################################################################
+
+  defmodule Validations do
+    @moduledoc false
+
+    @spec void(any()) :: Tyyppi.Value.either()
+    def void(value), do: {:ok, value}
+
+    @spec non_neg_integer(value :: any()) :: Tyyppi.Value.either()
+    def non_neg_integer(i) when i >= 0, do: {:ok, i}
+    def non_neg_integer(_), do: {:error, "Must be greater or equal to zero"}
+
+    @spec pos_integer(value :: any()) :: Tyyppi.Value.either()
+    def pos_integer(i) when i > 0, do: {:ok, i}
+    def pos_integer(_), do: {:error, "Must be greater than zero"}
+  end
+
+  #############################################################################
+
+  @spec any(value :: any()) :: t()
+  @doc "Factory for `any()` wrapped by `Tyyppi.Value`"
+  def any(value) do
+    put_in(
+      %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1},
+      [:value],
+      value
+    )
+  end
+
   @spec atom(value :: any()) :: t()
   @doc "Factory for `atom()` wrapped by `Tyyppi.Value`"
   def atom(value) do
@@ -131,11 +179,59 @@ defmodule Tyyppi.Value do
     )
   end
 
+  @spec string(value :: String.t()) :: t()
+  @doc "Factory for `String.t()` wrapped by `Tyyppi.Value`"
+  def string(value) do
+    put_in(
+      %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1},
+      [:value],
+      value
+    )
+  end
+
+  @spec boolean(value :: boolean()) :: t()
+  @doc "Factory for `boolean()` wrapped by `Tyyppi.Value`"
+  def boolean(value) do
+    put_in(
+      %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1},
+      [:value],
+      value
+    )
+  end
+
   @spec integer(value :: any()) :: t()
   @doc "Factory for `integer()` wrapped by `Tyyppi.Value`"
   def integer(value) do
     put_in(
       %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1},
+      [:value],
+      value
+    )
+  end
+
+  @spec non_neg_integer(value :: any()) :: t()
+  @doc "Factory for `non_neg_integer()` wrapped by `Tyyppi.Value`"
+  def non_neg_integer(value) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse(non_neg_integer()),
+        coercion: &Coercions.integer/1,
+        validation: &Validations.non_neg_integer/1
+      },
+      [:value],
+      value
+    )
+  end
+
+  @spec pos_integer(value :: any()) :: t()
+  @doc "Factory for `pos_integer()` wrapped by `Tyyppi.Value`"
+  def pos_integer(value) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse(pos_integer()),
+        coercion: &Coercions.integer/1,
+        validation: &Validations.pos_integer/1
+      },
       [:value],
       value
     )

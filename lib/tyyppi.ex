@@ -96,10 +96,8 @@ defmodule Tyyppi do
     do: quote(do: T.apply(unquote(type), unquote(fun), unquote(args)))
 
   @doc false
-  @spec void_validation(value) :: {:ok, value} | {:error, any()} when value: any()
-  def void_validation(value), do: {:ok, value}
+  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :void
 
   @doc false
-  @spec void_coercion(value) :: {:ok, value} | {:error, any()} when value: any()
-  def void_coercion(value), do: {:ok, value}
+  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :void
 end

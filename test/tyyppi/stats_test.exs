@@ -6,7 +6,9 @@ defmodule Test.Tyyppi.Stats do
   doctest Tyyppi.Stats
 
   setup_all do
-    {:error, {:already_started, pid}} = Stats.start_link(callback: &Test.Tyyppi.rehashed/2)
+    {:error, {:already_started, pid}} =
+      Stats.start_link(callback: &Test.Tyyppi.Rehasher.rehashed/2)
+
     [stats: pid]
   end
 
