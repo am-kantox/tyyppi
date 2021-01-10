@@ -203,111 +203,87 @@ defmodule Tyyppi.Value do
 
   #############################################################################
 
+  @spec any() :: t()
+  @doc "Creates a not defined `any()` wrapped by `Tyyppi.Value`"
+  def any, do: %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1}
+
   @spec any(value :: any()) :: t()
   @doc "Factory for `any()` wrapped by `Tyyppi.Value`"
-  def any(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1},
-      [:value],
-      value
-    )
-  end
+  def any(value), do: put_in(any(), [:value], value)
 
+  @spec atom() :: t()
+  @doc "AFactory for `atom()` wrapped by `Tyyppi.Value`"
+  def atom, do: %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1}
   @spec atom(value :: any()) :: t()
   @doc "Factory for `atom()` wrapped by `Tyyppi.Value`"
-  def atom(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1},
-      [:value],
-      value
-    )
-  end
+  def atom(value), do: put_in(atom(), [:value], value)
 
+  @spec string() :: t()
+  @doc "AFactory for `String.t()` wrapped by `Tyyppi.Value`"
+  def string, do: %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1}
   @spec string(value :: String.t()) :: t()
   @doc "Factory for `String.t()` wrapped by `Tyyppi.Value`"
-  def string(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1},
-      [:value],
-      value
-    )
-  end
+  def string(value), do: put_in(string(), [:value], value)
 
+  @spec boolean() :: t()
+  @doc "AFactory for `boolean()` wrapped by `Tyyppi.Value`"
+  def boolean, do: %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1}
   @spec boolean(value :: boolean()) :: t()
   @doc "Factory for `boolean()` wrapped by `Tyyppi.Value`"
-  def boolean(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1},
-      [:value],
-      value
-    )
-  end
+  def boolean(value), do: put_in(boolean(), [:value], value)
 
+  @spec integer() :: t()
+  @doc "AFactory for `integer()` wrapped by `Tyyppi.Value`"
+  def integer, do: %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1}
   @spec integer(value :: any()) :: t()
   @doc "Factory for `integer()` wrapped by `Tyyppi.Value`"
-  def integer(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1},
-      [:value],
-      value
-    )
-  end
+  def integer(value), do: put_in(integer(), [:value], value)
+
+  @spec non_neg_integer() :: t()
+  @doc "AFactory for `non_neg_integer()` wrapped by `Tyyppi.Value`"
+  def non_neg_integer,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(non_neg_integer()),
+      coercion: &Coercions.integer/1,
+      validation: &Validations.non_neg_integer/1
+    }
 
   @spec non_neg_integer(value :: any()) :: t()
   @doc "Factory for `non_neg_integer()` wrapped by `Tyyppi.Value`"
-  def non_neg_integer(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(non_neg_integer()),
-        coercion: &Coercions.integer/1,
-        validation: &Validations.non_neg_integer/1
-      },
-      [:value],
-      value
-    )
-  end
+  def non_neg_integer(value), do: put_in(non_neg_integer(), [:value], value)
+
+  @spec pos_integer() :: t()
+  @doc "AFactory for `pos_integer()` wrapped by `Tyyppi.Value`"
+  def pos_integer,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(pos_integer()),
+      coercion: &Coercions.integer/1,
+      validation: &Validations.pos_integer/1
+    }
 
   @spec pos_integer(value :: any()) :: t()
   @doc "Factory for `pos_integer()` wrapped by `Tyyppi.Value`"
-  def pos_integer(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(pos_integer()),
-        coercion: &Coercions.integer/1,
-        validation: &Validations.pos_integer/1
-      },
-      [:value],
-      value
-    )
-  end
+  def pos_integer(value), do: put_in(pos_integer(), [:value], value)
+
+  @spec timeout() :: t()
+  @doc "AFactory for `timeout()` wrapped by `Tyyppi.Value`"
+  def timeout,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(timeout()),
+      coercion: &Coercions.timeout/1,
+      validation: &Validations.timeout/1
+    }
 
   @spec timeout(value :: any()) :: t()
   @doc "Factory for `timeout()` wrapped by `Tyyppi.Value`"
-  def timeout(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(timeout()),
-        coercion: &Coercions.timeout/1,
-        validation: &Validations.timeout/1
-      },
-      [:value],
-      value
-    )
-  end
+  def timeout(value), do: put_in(timeout(), [:value], value)
 
+  @spec pid() :: t()
+  @doc "AFactory for `pid()` wrapped by `Tyyppi.Value`"
+  def pid, do: %Tyyppi.Value{type: Tyyppi.parse(pid()), coercion: &Coercions.pid/1}
   @spec pid(value :: any()) :: t()
   @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
-  def pid(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(pid()),
-        coercion: &Coercions.pid/1
-      },
-      [:value],
-      value
-    )
-  end
-
+  def pid(value), do: put_in(pid(), [:value], value)
   @spec pid(p1 :: non_neg_integer(), p2 :: non_neg_integer(), p3 :: non_neg_integer()) :: t()
   @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
   def pid(p1, p2, p3)
@@ -315,35 +291,33 @@ defmodule Tyyppi.Value do
              p3 >= 0,
       do: [p1, p2, p3] |> Enum.join(".") |> pid()
 
+  @spec mfa() :: t()
+  @doc "AFactory for `mfa` wrapped by `Tyyppi.Value`"
+  def mfa,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
+      validation: &Validations.mfa/1
+    }
+
   @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
-  def mfa(mfa) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
-        validation: &Validations.mfa/1
-      },
-      [:value],
-      mfa
-    )
-  end
+  def mfa(mfa), do: put_in(mfa(), [:value], mfa)
 
   @spec mfa(m :: module(), f :: atom(), a :: non_neg_integer()) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
   def mfa(m, f, a) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0, do: mfa({m, f, a})
 
+  @spec mod_arg() :: t()
+  @doc "AFactory for `mod_arg` wrapped by `Tyyppi.Value`"
+  def mod_arg,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse({module(), list()}),
+      validation: &Validations.mod_arg/1
+    }
+
   @spec mod_arg({m :: module(), args :: list()}) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
-  def mod_arg(mod_arg) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse({module(), list()}),
-        validation: &Validations.mod_arg/1
-      },
-      [:value],
-      mod_arg
-    )
-  end
+  def mod_arg(mod_arg), do: put_in(mod_arg(), [:value], mod_arg)
 
   @spec mod_arg(m :: module(), args :: list()) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"

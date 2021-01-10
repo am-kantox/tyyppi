@@ -27,7 +27,6 @@ defmodule Tyyppi.Matchers do
   #################### PRIMITIVES ###################
 
   def of?(_, {:type, _, :any, _}, _term), do: true
-  def of?(_, {:type, _, :term, _}, _term), do: true
 
   def of?(_, {:type, _, :atom, _}, atom) when is_atom(atom), do: true
   def of?(_, {:type, _, :module, _}, atom) when is_atom(atom), do: true
@@ -46,6 +45,13 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :reference, _}, reference) when is_reference(reference), do: true
   def of?(_, {:type, _, :timeout, _}, timeout) when is_timeout(timeout), do: true
+
+  ################### BUILT INS #####################
+
+  def of?(x, {:type, z, :term, a}, term), do: of?(x, {:type, z, :any, a}, term)
+  def of?(_, {:type, _, :arity, _}, arity) when arity >= 0 and arity <= 255, do: true
+  def of?(x, {:type, z, :as_boolean, [t]}, term), do: of?(x, {:type, z, t, []}, term)
+  # FIXME def of?(_, {:type, _, :bitstring, [t]}, term), do: of?(x, {:type, z, t, []}, term)
 
   ##################### LISTS #######################
 

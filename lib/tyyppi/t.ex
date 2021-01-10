@@ -310,11 +310,19 @@ defmodule Tyyppi.T do
 
   @doc false
   @spec param_names([raw()] | any()) :: [atom()]
-  def param_names(params) do
-    if Keyword.keyword?(params),
-      do: Keyword.keys(params),
-      else: []
+  def param_names(params) when is_list(params) do
+    params
+    |> Enum.reduce([], fn kv, acc ->
+      case kv do
+        {k, _} -> [k | acc]
+        {k, _, _} -> [k | acc]
+        _ -> acc
+      end
+    end)
+    |> Enum.reverse()
   end
+
+  def param_names(_), do: []
 
   defimpl String.Chars do
     @moduledoc false
