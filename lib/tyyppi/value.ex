@@ -138,6 +138,26 @@ defmodule Tyyppi.Value do
 
     def integer(_not_integer),
       do: {:error, "Expected number() or binary()"}
+
+    @spec timeout(value :: any()) :: Tyyppi.Value.either()
+    def timeout(:infinity), do: {:ok, :infinity}
+
+    def timeout(value) do
+      case integer(value) do
+        {:ok, value} -> {:ok, value}
+        {:error, _message} -> {:error, "Expected timeout()"}
+      end
+    end
+
+    @spec pid(value :: any()) :: Tyyppi.Value.either()
+    def pid(pid) when is_pid(pid), do: {:ok, pid}
+    def pid("#PID" <> maybe_pid), do: pid(maybe_pid)
+    def pid([_, _, _] = list), do: list |> Enum.join(".") |> pid()
+    def pid(value) when is_binary(value), do: value |> to_charlist() |> pid()
+    def pid([?< | value]), do: value |> List.delete_at(-1) |> pid()
+    def pid(value) when is_list(value), do: {:ok, :erlang.list_to_pid('<#{value}>')}
+
+    def pid(_value), do: {:error, "Expected a value that can be converted to pid()"}
   end
 
   #############################################################################
@@ -155,6 +175,30 @@ defmodule Tyyppi.Value do
     @spec pos_integer(value :: any()) :: Tyyppi.Value.either()
     def pos_integer(i) when i > 0, do: {:ok, i}
     def pos_integer(_), do: {:error, "Must be greater than zero"}
+
+    @spec timeout(value :: any()) :: Tyyppi.Value.either()
+    def timeout(:infinity), do: {:ok, :infinity}
+    def timeout(i) when i >= 0, do: {:ok, i}
+    def timeout(_), do: {:error, "Must be integer, greater or equal to zero, or :infinity atom"}
+
+    @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: Tyyppi.Value.either()
+    def mfa({m, f, a}) do
+      result =
+        with {:module, ^m} <- Code.ensure_compiled(m),
+             [_ | _] = funs <- m.__info__(:functions),
+             {^f, ^a} <- Enum.find(funs, &match?({^f, ^a}, &1)),
+             do: {:ok, {m, f, a}}
+
+      result || {:error, "#{inspect(m)} does not declare a function #{f} of arity #{a}"}
+    end
+
+    def mfa(_), do: {:error, "Must be mfa()"}
+
+    @spec mod_arg({m :: module(), args :: list()}) :: Tyyppi.Value.either()
+    def mod_arg({m, args}),
+      do: with({:module, ^m} <- Code.ensure_compiled(m), do: {:ok, {m, args}})
+
+    def mod_arg(_), do: {:error, "Must be a tuple with module and argument list"}
   end
 
   #############################################################################
@@ -236,6 +280,74 @@ defmodule Tyyppi.Value do
       value
     )
   end
+
+  @spec timeout(value :: any()) :: t()
+  @doc "Factory for `timeout()` wrapped by `Tyyppi.Value`"
+  def timeout(value) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse(timeout()),
+        coercion: &Coercions.timeout/1,
+        validation: &Validations.timeout/1
+      },
+      [:value],
+      value
+    )
+  end
+
+  @spec pid(value :: any()) :: t()
+  @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
+  def pid(value) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse(pid()),
+        coercion: &Coercions.pid/1
+      },
+      [:value],
+      value
+    )
+  end
+
+  @spec pid(p1 :: non_neg_integer(), p2 :: non_neg_integer(), p3 :: non_neg_integer()) :: t()
+  @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
+  def pid(p1, p2, p3)
+      when is_integer(p1) and p1 >= 0 and is_integer(p2) and p2 >= 0 and is_integer(p3) and
+             p3 >= 0,
+      do: [p1, p2, p3] |> Enum.join(".") |> pid()
+
+  @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: t()
+  @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
+  def mfa(mfa) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
+        validation: &Validations.mfa/1
+      },
+      [:value],
+      mfa
+    )
+  end
+
+  @spec mfa(m :: module(), f :: atom(), a :: non_neg_integer()) :: t()
+  @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
+  def mfa(m, f, a) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0, do: mfa({m, f, a})
+
+  @spec mod_arg({m :: module(), args :: list()}) :: t()
+  @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
+  def mod_arg(mod_arg) do
+    put_in(
+      %Tyyppi.Value{
+        type: Tyyppi.parse({module(), list()}),
+        validation: &Validations.mod_arg/1
+      },
+      [:value],
+      mod_arg
+    )
+  end
+
+  @spec mod_arg(m :: module(), args :: list()) :: t()
+  @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
+  def mod_arg(m, args) when is_atom(m) and is_list(args), do: mod_arg({m, args})
 
   #############################################################################
 

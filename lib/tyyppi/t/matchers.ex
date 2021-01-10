@@ -4,6 +4,9 @@ defmodule Tyyppi.Matchers do
   require Logger
   alias Tyyppi.Stats
 
+  defguardp is_timeout(timeout)
+            when timeout == :infinity or (is_integer(timeout) and timeout >= 0)
+
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
 
@@ -33,15 +36,16 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, nil, _}, nil), do: true
   def of?(_, {:type, _, nil, _}, []), do: true
   def of?(_, {:type, _, :boolean, _}, bool) when is_boolean(bool), do: true
-  def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :float, _}, flt) when is_float(flt), do: true
-  def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
+  def of?(_, {:type, _, :integer, _}, int) when is_integer(int), do: true
   def of?(_, {:type, _, :neg_integer, _}, i) when is_integer(i) and i < 0, do: true
-  def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :non_neg_integer, _}, i) when is_integer(i) and i >= 0, do: true
+  def of?(_, {:type, _, :number, _}, num) when is_float(num) or is_integer(num), do: true
   def of?(_, {:type, _, :pid, _}, pid) when is_pid(pid), do: true
   def of?(_, {:type, _, :port, _}, port) when is_port(port), do: true
+  def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :reference, _}, reference) when is_reference(reference), do: true
+  def of?(_, {:type, _, :timeout, _}, timeout) when is_timeout(timeout), do: true
 
   ##################### LISTS #######################
 

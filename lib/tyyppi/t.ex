@@ -57,6 +57,7 @@ defmodule Tyyppi.T do
            | :set
            | :string
            | :term
+           | :timeout
            | :tree
            | :tuple
            | :union
@@ -319,14 +320,15 @@ defmodule Tyyppi.T do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
 
-    def to_string(%T{module: nil, name: nil, definition: {:type, _, type, params}}) do
-      args = Macro.generate_arguments(length(params || []), nil)
-      ~s|#{type}(#{Enum.join(args, ", ")})|
+    defp stringify({:type, _, type, params}) do
+      params = params |> Enum.map(&stringify/1) |> Enum.join(", ")
+      ~s|#{type}(#{params})|
     end
 
-    def to_string(%T{module: module, name: name, params: params}) do
-      args = Macro.generate_arguments(length(params || []), module)
-      ~s|#{inspect(module)}.#{name}(#{Enum.join(args, ", ")})|
-    end
+    def to_string(%T{module: nil, name: nil, definition: {:type, _, _type, _params} = type}),
+      do: stringify(type)
+
+    def to_string(%T{module: module, name: name, params: params}),
+      do: stringify({:type, 0, "#{inspect(module)}.#{name}", params})
   end
 end
