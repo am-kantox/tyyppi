@@ -11,7 +11,7 @@ defmodule Tyyppi.T do
   require Logger
 
   @doc false
-  defguard is_params(params) when is_list(params) or is_atom(params)
+  defguardp is_params(params) when is_list(params) or is_atom(params)
 
   @typep kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
   @typep visibility :: :typep | :type | :opaque | :built_in

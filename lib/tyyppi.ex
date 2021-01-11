@@ -13,14 +13,6 @@ defmodule Tyyppi do
   alias Tyyppi.{Matchers, Stats, T}
   import Tyyppi.T, only: [normalize_params: 1, param_names: 1, parse_definition: 1]
 
-  # @doc false
-  # defmacro __using__(_opts) do
-  #   quote do
-  #     require Tyyppi
-  #     require Tyyppi.T
-  #   end
-  # end
-
   @doc false
   defguard is_params(params) when is_list(params) or is_atom(params)
 
