@@ -264,7 +264,9 @@ defmodule Test.Tyyppi.T do
     assert {:error, {:result, 84.0}} = Tyyppi.apply(Types.test_fun_3(), &Types.f3_2/1, [2])
 
     assert {:ok, "foo"} = Tyyppi.apply(&Atom.to_string/1, [:foo])
+    assert {:ok, "42"} = Tyyppi.apply(&Integer.to_string/1, [42])
     assert {:error, {:args, ["foo"]}} = Tyyppi.apply(&Atom.to_string/1, ["foo"])
+    assert {:error, {:args, ["foo"]}} = Tyyppi.apply(&Integer.to_string/1, ["foo"])
   end
 
   test "String.Char" do

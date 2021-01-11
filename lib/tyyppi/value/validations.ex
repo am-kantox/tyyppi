@@ -35,4 +35,8 @@ defmodule Tyyppi.Value.Validations do
     do: with({:module, ^m} <- Code.ensure_compiled(m), do: {:ok, {m, args}})
 
   def mod_arg(_), do: {:error, "Must be a tuple with module and argument list"}
+
+  @spec fun(f :: (... -> any())) :: Tyyppi.Value.either()
+  def fun(f) when is_function(f), do: {:ok, f}
+  def fun(_), do: {:error, "Expected function"}
 end

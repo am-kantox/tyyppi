@@ -37,9 +37,4 @@ IEx.configure(
     |> IO.chardata_to_string()
 )
 
-alias Tyyppi.{Stats, T, Value, ExampleValue}
-
-require Tyyppi
-require Tyyppi.Struct
-
-Tyyppi.Stats.start_link()
+Code.eval_file("test/support/setup_tyyppi.exs")

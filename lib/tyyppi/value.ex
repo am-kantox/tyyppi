@@ -24,7 +24,8 @@ defmodule Tyyppi.Value do
           type: Tyyppi.T.t(),
           coercion: (value() -> either()),
           validation: (value() -> either()),
-          __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]}
+          __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
+          __params__: %{optional(atom()) => any()}
         }
 
   defstruct value: nil,
@@ -32,7 +33,8 @@ defmodule Tyyppi.Value do
             documentation: "",
             coercion: &Tyyppi.void_coercion/1,
             validation: &Tyyppi.void_validation/1,
-            __meta__: %{subsection: "", defined?: false, errors: []}
+            __meta__: %{subsection: "", defined?: false, errors: []},
+            __params__: %{}
 
   defmacrop defined,
     do: quote(do: %__MODULE__{__meta__: %{defined?: true}, value: var!(value)})
@@ -137,7 +139,7 @@ defmodule Tyyppi.Value do
   def any(any), do: any(value: any)
 
   @spec atom() :: t()
-  @doc "AFactory for `atom()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `atom()` wrapped by `Tyyppi.Value`"
   def atom, do: %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1}
 
   @spec atom(options :: any() | [factory_option()]) :: t()
@@ -147,7 +149,7 @@ defmodule Tyyppi.Value do
   def atom(atom), do: atom(value: atom)
 
   @spec string() :: t()
-  @doc "AFactory for `String.t()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `String.t()` wrapped by `Tyyppi.Value`"
   def string, do: %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1}
 
   @spec string(options :: any() | [factory_option()]) :: t()
@@ -157,7 +159,7 @@ defmodule Tyyppi.Value do
   def string(string), do: string(value: string)
 
   @spec boolean() :: t()
-  @doc "AFactory for `boolean()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `boolean()` wrapped by `Tyyppi.Value`"
   def boolean, do: %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1}
   @spec boolean(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `boolean()` wrapped by `Tyyppi.Value`"
@@ -165,7 +167,7 @@ defmodule Tyyppi.Value do
   def boolean(boolean), do: boolean(value: boolean)
 
   @spec integer() :: t()
-  @doc "AFactory for `integer()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `integer()` wrapped by `Tyyppi.Value`"
   def integer, do: %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1}
   @spec integer(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `integer()` wrapped by `Tyyppi.Value`"
@@ -173,7 +175,7 @@ defmodule Tyyppi.Value do
   def integer(integer), do: integer(value: integer)
 
   @spec non_neg_integer() :: t()
-  @doc "AFactory for `non_neg_integer()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `non_neg_integer()` wrapped by `Tyyppi.Value`"
   def non_neg_integer,
     do: %Tyyppi.Value{
       type: Tyyppi.parse(non_neg_integer()),
@@ -187,7 +189,7 @@ defmodule Tyyppi.Value do
   def non_neg_integer(non_neg_integer), do: non_neg_integer(value: non_neg_integer)
 
   @spec pos_integer() :: t()
-  @doc "AFactory for `pos_integer()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `pos_integer()` wrapped by `Tyyppi.Value`"
   def pos_integer,
     do: %Tyyppi.Value{
       type: Tyyppi.parse(pos_integer()),
@@ -201,7 +203,7 @@ defmodule Tyyppi.Value do
   def pos_integer(pos_integer), do: pos_integer(value: pos_integer)
 
   @spec timeout() :: t()
-  @doc "AFactory for `timeout()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `timeout()` wrapped by `Tyyppi.Value`"
   def timeout,
     do: %Tyyppi.Value{
       type: Tyyppi.parse(timeout()),
@@ -215,7 +217,7 @@ defmodule Tyyppi.Value do
   def timeout(timeout), do: timeout(value: timeout)
 
   @spec pid() :: t()
-  @doc "AFactory for `pid()` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `pid()` wrapped by `Tyyppi.Value`"
   def pid, do: %Tyyppi.Value{type: Tyyppi.parse(pid()), coercion: &Coercions.pid/1}
 
   @spec pid(options :: any() | [factory_option()]) :: t()
@@ -232,7 +234,7 @@ defmodule Tyyppi.Value do
       do: pid(value: Enum.join([p1, p2, p3], "."))
 
   @spec mfa() :: t()
-  @doc "AFactory for `mfa` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `mfa` wrapped by `Tyyppi.Value`"
   def mfa,
     do: %Tyyppi.Value{
       type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
@@ -250,7 +252,7 @@ defmodule Tyyppi.Value do
     do: mfa(value: {m, f, a})
 
   @spec mod_arg() :: t()
-  @doc "AFactory for `mod_arg` wrapped by `Tyyppi.Value`"
+  @doc "Creates a not defined `mod_arg` wrapped by `Tyyppi.Value`"
   def mod_arg,
     do: %Tyyppi.Value{
       type: Tyyppi.parse({module(), list()}),
@@ -265,6 +267,19 @@ defmodule Tyyppi.Value do
   @spec mod_arg(m :: module(), args :: list()) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
   def mod_arg(m, args) when is_atom(m) and is_list(args), do: mod_arg(value: {m, args})
+
+  #############################################################################
+
+  @spec fun(arity :: arity()) :: t()
+  @doc "Creates a not defined `fun` wrapped by `Tyyppi.Value`"
+  def fun(arity),
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse({module(), list()}),
+      validation: &Validations.fun/1,
+      __params__: %{arity: arity}
+    }
+
+  #############################################################################
 
   @spec put_options(acc :: t(), options :: [factory_option()]) :: t()
   defp put_options(acc, options),

@@ -3,6 +3,11 @@ defmodule Tyyppi.Function do
 
   import Tyyppi.Matchers, only: [of?: 3]
 
+  def apply(module, {:type, _, :bounded_fun, [fun_type, constraint]}, fun, args) do
+    type = apply_contraints(fun_type, constraint)
+    apply(module, type, fun, args)
+  end
+
   def apply(
         module,
         {:type, _, :fun, [{:type, _, :product, arg_types}, result_type]} = type,
@@ -37,5 +42,36 @@ defmodule Tyyppi.Function do
       do: {true, {:ok, result}}
     )
     |> elem(1)
+  end
+
+  # {:type, 1141, :fun, [{:type, 1141, :product, [{:var, 1141, :Integer}]}, {:type, 1141, :binary, []}]}
+  # {:type, 1142, :constraint, [{:atom, 1142, :is_subtype}, [{:var, 1142, :Integer}, {:type, 1142, :integer, []}]]}
+  defp apply_contraints({:type, x, :fun, types}, constraints) do
+    types =
+      Enum.map(types, fn type ->
+        case type do
+          {:type, x, y, vars} ->
+            vars =
+              Enum.map(vars, fn var ->
+                case var do
+                  {:var, _, var} ->
+                    List.first(
+                      for {:type, _, :constraint, [_, [{:var, _, ^var}, type]]} <- constraints,
+                          do: type
+                    )
+
+                  other ->
+                    other
+                end
+              end)
+
+            {:type, x, y, vars}
+
+          other ->
+            other
+        end
+      end)
+
+    {:type, x, :fun, types}
   end
 end
