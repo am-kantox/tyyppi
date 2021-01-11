@@ -1,7 +1,24 @@
 defmodule Test.Tyyppi.Value do
   use ExUnit.Case
 
+  require Tyyppi
   alias Tyyppi.Value
+
+  test "value?" do
+    assert :ok |> Value.any() |> Value.value?()
+    refute Value.valid?(42)
+  end
+
+  test "value_type?" do
+    assert Value.t() |> Tyyppi.parse() |> Value.value_type?()
+    refute GenServer.on_start() |> Tyyppi.parse() |> Value.value_type?()
+    refute integer() |> Tyyppi.parse() |> Value.value_type?()
+  end
+
+  test "valid?" do
+    assert :ok |> Value.any() |> Value.valid?()
+    refute Value.any() |> Value.valid?()
+  end
 
   test "any" do
     assert :ok == get_in(Value.any(:ok), [:value])
