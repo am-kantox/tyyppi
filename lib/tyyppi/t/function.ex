@@ -49,26 +49,18 @@ defmodule Tyyppi.Function do
   defp apply_contraints({:type, x, :fun, types}, constraints) do
     types =
       Enum.map(types, fn type ->
-        case type do
-          {:type, x, y, vars} ->
-            vars =
-              Enum.map(vars, fn var ->
-                case var do
-                  {:var, _, var} ->
-                    List.first(
-                      for {:type, _, :constraint, [_, [{:var, _, ^var}, type]]} <- constraints,
-                          do: type
-                    )
+        with {:type, x, y, vars} <- type do
+          vars =
+            Enum.map(vars, fn var ->
+              with {:var, _, var} <- var do
+                List.first(
+                  for {:type, _, :constraint, [_, [{:var, _, ^var}, type]]} <- constraints,
+                      do: type
+                )
+              end
+            end)
 
-                  other ->
-                    other
-                end
-              end)
-
-            {:type, x, y, vars}
-
-          other ->
-            other
+          {:type, x, y, vars}
         end
       end)
 
