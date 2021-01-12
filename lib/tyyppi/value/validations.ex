@@ -36,7 +36,9 @@ defmodule Tyyppi.Value.Validations do
 
   def mod_arg(_), do: {:error, "Must be a tuple with module and argument list"}
 
-  @spec fun(f :: (... -> any())) :: Tyyppi.Value.either()
-  def fun(f) when is_function(f), do: {:ok, f}
-  def fun(_), do: {:error, "Expected function"}
+  @spec fun(f :: (... -> any()), arity :: arity()) :: Tyyppi.Value.either()
+  def fun(f, %{arity: arity}) when is_function(f, arity), do: {:ok, f}
+  def fun(_, %{arity: arity}), do: {:error, "Expected a function of arity #{arity}"}
+  def fun(f, _) when is_function(f), do: {:ok, f}
+  def fun(_, _), do: {:error, "Expected a function"}
 end

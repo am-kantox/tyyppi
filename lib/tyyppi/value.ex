@@ -17,15 +17,21 @@ defmodule Tyyppi.Value do
   @typedoc "Type returned from coercions and validations, typical pair of ok/error tuples"
   @type either :: {:ok, value()} | {:error, any()}
 
+  @typedoc "Type of the coercion function allowed"
+  @type coercer :: (value() -> either())
+
+  @typedoc "Type of the validation function allowed"
+  @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
+
   @type t :: %{
           __struct__: Tyyppi.Value,
           value: value(),
           documentation: String.t(),
           type: Tyyppi.T.t(),
-          coercion: (value() -> either()),
-          validation: (value() -> either()),
+          coercion: coercer(),
+          validation: validator(),
           __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
-          __params__: %{optional(atom()) => any()}
+          __context__: %{required(atom()) => any()}
         }
 
   defstruct value: nil,
@@ -34,7 +40,7 @@ defmodule Tyyppi.Value do
             coercion: &Tyyppi.void_coercion/1,
             validation: &Tyyppi.void_validation/1,
             __meta__: %{subsection: "", defined?: false, errors: []},
-            __params__: %{}
+            __context__: %{}
 
   defmacrop defined,
     do: quote(do: %__MODULE__{__meta__: %{defined?: true}, value: var!(value)})
@@ -78,6 +84,8 @@ defmodule Tyyppi.Value do
   @impl Access
   @doc false
   def get_and_update(value() = data, :value, fun) do
+    # TODO cache it?
+
     case fun.(value) do
       :pop ->
         pop(data, :value)
@@ -86,7 +94,7 @@ defmodule Tyyppi.Value do
         update_value =
           with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(update_value)},
                true <- Tyyppi.of_type?(data.type, cast),
-               {:validation, {:ok, update_value}} <- {:validation, data.validation.(cast)} do
+               {:validation, {:ok, update_value}} <- {:validation, validation(data).(cast)} do
             %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: update_value}
           else
             false ->
@@ -106,6 +114,14 @@ defmodule Tyyppi.Value do
     do: raise(BadStructError, struct: __MODULE__, term: key)
 
   #############################################################################
+  @doc false
+  @spec validation(data :: t()) :: (value() -> either())
+  def validation(%__MODULE__{validation: f}) when is_function(f, 1), do: &f.(&1)
+
+  def validation(%__MODULE__{__context__: context, validation: f}) when is_function(f, 2),
+    do: &f.(&1, context)
+
+  def validation(%__MODULE__{}), do: &{:ok, &1}
 
   @spec value_type?(Tyyppi.T.t()) :: boolean()
   @doc false
@@ -124,6 +140,7 @@ defmodule Tyyppi.Value do
   @doc false
   def valid?(meta()) when meta.defined? == true, do: true
   def valid?(_), do: false
+
   #############################################################################
 
   @typep factory_option :: {:value, any()} | {:documentation, String.t()}
@@ -270,14 +287,29 @@ defmodule Tyyppi.Value do
 
   #############################################################################
 
-  @spec fun(arity :: arity()) :: t()
+  @spec fun(:any | arity() | keyword() | fun()) :: t() | no_return
   @doc "Creates a not defined `fun` wrapped by `Tyyppi.Value`"
-  def fun(arity),
+  def fun(arity \\ :any)
+
+  def fun(:any),
     do: %Tyyppi.Value{
-      type: Tyyppi.parse({module(), list()}),
-      validation: &Validations.fun/1,
-      __params__: %{arity: arity}
+      type: Tyyppi.parse(fun()),
+      validation: &Validations.fun/2
     }
+
+  def fun(arity) when is_integer(arity) and arity >= 0 and arity <= 255,
+    do: %Tyyppi.Value{fun(:any) | __context__: %{arity: arity}}
+
+  def fun(options) when is_list(options),
+    do:
+      options
+      |> Keyword.get(:value, :any)
+      |> Function.info(:arity)
+      |> elem(1)
+      |> fun()
+      |> put_options(options)
+
+  def fun(f) when is_function(f), do: fun(value: f)
 
   #############################################################################
 

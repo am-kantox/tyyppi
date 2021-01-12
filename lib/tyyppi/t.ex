@@ -14,6 +14,7 @@ defmodule Tyyppi.T do
   defguardp is_params(params) when is_list(params) or is_atom(params)
 
   @typep kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
+  @typep ast_lead :: :->
   @typep visibility :: :typep | :type | :opaque | :built_in
   @typep simple ::
            nil
@@ -65,8 +66,8 @@ defmodule Tyyppi.T do
            | :tuple
            | :union
 
-  @type ast :: Macro.t()
-  @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
+  @type ast :: Macro.t() | {module(), atom(), list() | nil | non_neg_integer()}
+  @type raw :: {kind() | ast_lead(), non_neg_integer() | keyword(), simple() | [ast()], [raw()]}
 
   @typedoc """
   The type information in a human-readable format.
@@ -166,6 +167,8 @@ defmodule Tyyppi.T do
   defimpl String.Chars do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
+
+    defp stringify({:type, _, type}), do: ~s|#{type}()|
 
     defp stringify({:type, _, type, params}) do
       params = params |> Enum.map(&stringify/1) |> Enum.join(", ")

@@ -147,4 +147,18 @@ defmodule Test.Tyyppi.Value do
              }
            } = Value.mod_arg(-42)
   end
+
+  test "fun" do
+    assert value =
+             %{__meta__: %{defined?: true}, __context__: %{arity: 1}} =
+             Value.fun(&Integer.to_string/1)
+
+    assert "42" == value[:value].(42)
+
+    assert %{
+             __meta__: %{
+               errors: [type: [expected: "fun(any(), either())", got: 42]]
+             }
+           } = put_in(Value.fun(), [:value], 42)
+  end
 end
