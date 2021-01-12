@@ -31,7 +31,7 @@ defmodule Tyyppi.Value do
           coercion: coercer(),
           validation: validator(),
           __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
-          __context__: %{required(atom()) => any()}
+          __context__: %{optional(atom()) => any()}
         }
 
   defstruct value: nil,

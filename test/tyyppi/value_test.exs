@@ -157,7 +157,7 @@ defmodule Test.Tyyppi.Value do
 
     assert %{
              __meta__: %{
-               errors: [type: [expected: "fun(any(), either())", got: 42]]
+               errors: [type: [expected: "fun()", got: 42]]
              }
            } = put_in(Value.fun(), [:value], 42)
   end

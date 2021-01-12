@@ -105,12 +105,16 @@ defmodule Tyyppi.Matchers do
       when is_function(fun, length(args)),
       do: true
 
-  def of?(_module, {:type, _, :fun, [{:type, _, :product, args}, _result_type]}, fun)
-      when is_function(fun, length(args)),
+  def of?(_module, {:type, _, f, [{:type, _, :product, args}, _result_type]}, fun)
+      when f in [:fun, :function] and is_function(fun, length(args)),
       do: true
 
-  def of?(_module, {:type, _, :fun, [{:type, _, :any}, _result_type]}, fun)
-      when is_function(fun),
+  def of?(_module, {:type, _, f, []}, fun)
+      when f in [:fun, :function] and is_function(fun),
+      do: true
+
+  def of?(_module, {:type, _, f, [{:type, _, :any}, _result_type]}, fun)
+      when f in [:fun, :function] and is_function(fun),
       do: true
 
   ###################### MAPS #######################
@@ -118,26 +122,34 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :map, []}, map) when is_map(map), do: true
   def of?(_, {:type, _, :map, :any}, map) when is_map(map), do: true
 
-  def of?(module, {:type, _, :map, types}, term) when is_map(term),
+  def of?(module, {:type, _, :map, types}, %{} = term),
     do: Enum.all?(types, &of?(module, &1, term))
 
-  def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, term)
-      when is_map(term),
-      do: of?(module, type, Map.get(term, name))
+  def of?(_, {:type, _, :map_field_exact, _}, %{} = term) when map_size(term) == 0,
+    do: false
 
-  def of?(module, {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]}, term)
-      when is_map(term) and map_size(term) > 0 do
-    Enum.all?(term, fn {k, v} ->
-      of?(module, key_type, k) and of?(module, value_type, v)
-    end)
-  end
+  def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, %{} = term),
+    do: of?(module, type, Map.get(term, name))
 
-  def of?(module, {:type, _, :map_field_assoc, [{:type, _, _, _} = key_type, value_type]}, term)
-      when is_map(term) do
-    Enum.all?(term, fn {k, v} ->
-      of?(module, key_type, k) and of?(module, value_type, v)
-    end)
-  end
+  def of?(
+        module,
+        {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]},
+        %{} = term
+      ),
+      do:
+        Enum.all?(term, fn {k, v} ->
+          of?(module, key_type, k) and of?(module, value_type, v)
+        end)
+
+  def of?(
+        module,
+        {:type, _, :map_field_assoc, [{:type, _, _, _} = key_type, value_type]},
+        %{} = term
+      ),
+      do:
+        Enum.all?(term, fn {k, v} ->
+          of?(module, key_type, k) and of?(module, value_type, v)
+        end)
 
   ###################### UNION ######################
 

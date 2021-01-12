@@ -223,7 +223,6 @@ defmodule Tyyppi do
              Map.new(Elixir.Function.info(unquote(fun))),
            {:ok, specs} <- Code.Typespec.fetch_specs(module),
            {{fun, arity}, [spec]} <- Enum.find(specs, &match?({{^fun, ^arity}, _}, &1)),
-           # IO.inspect(spec, label: "★★ SPEC ★★"),
            do: Tyyppi.Function.apply(module, spec, unquote(fun), unquote(args)),
            else: (result -> {:error, {:no_spec, result}})
     end
