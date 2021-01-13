@@ -37,4 +37,7 @@ IEx.configure(
     |> IO.chardata_to_string()
 )
 
-Code.eval_file("test/support/setup_tyyppi.exs")
+unless match?({:module, _}, Code.ensure_compiled(Tyyppi)),
+  do: IO.puts("\n✗ Tyyppi features are not set. Run `iex -S mix` to enable.")
+
+use Tyyppi

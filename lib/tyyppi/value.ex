@@ -311,6 +311,28 @@ defmodule Tyyppi.Value do
 
   def fun(f) when is_function(f), do: fun(value: f)
 
+  @spec do_one_of(keyword()) :: t()
+  defp do_one_of(options) when is_list(options) do
+    {allowed, options} = Keyword.pop(options, :allowed, [])
+    allowed |> one_of() |> put_options(options)
+  end
+
+  @spec one_of([any()]) :: t()
+  @doc "Creates a `one_of` value wrapped by `Tyyppi.Value`"
+  def one_of([{:value, _} | _] = options), do: do_one_of(options)
+  def one_of([{:documentation, _} | _] = options), do: do_one_of(options)
+  def one_of([{:allowed, _} | _] = options), do: do_one_of(options)
+
+  def one_of(allowed) when is_list(allowed),
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(any()),
+      validation: &Validations.one_of/2,
+      __context__: %{allowed: allowed}
+    }
+
+  @spec one_of(any(), [any()]) :: t()
+  def one_of(value, allowed), do: allowed |> one_of() |> put_in([:value], value)
+
   #############################################################################
 
   @spec put_options(acc :: t(), options :: [factory_option()]) :: t()
@@ -323,12 +345,17 @@ defmodule Tyyppi.Value do
     @moduledoc false
     import Inspect.Algebra
 
+    def inspect(%Tyyppi.Value{value: value, __meta__: %{errors: errors}}, opts)
+        when length(errors) > 0 do
+      concat(["‹❌#{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
+    end
+
     def inspect(%Tyyppi.Value{value: value, __meta__: %{defined?: true}}, opts) do
-      concat(["‹", to_doc(value, opts), "›"])
+      concat(["‹✔️", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value}, opts) do
-      concat(["‹✗", to_doc(value, opts), "›"])
+      concat(["‹❓", to_doc(value, opts), "›"])
     end
   end
 end

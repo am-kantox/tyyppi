@@ -161,4 +161,18 @@ defmodule Test.Tyyppi.Value do
              }
            } = put_in(Value.fun(), [:value], 42)
   end
+
+  test "one_of" do
+    assert value =
+             %{__meta__: %{defined?: true}, __context__: %{allowed: [1, 2, 3]}} =
+             Value.one_of(2, [1, 2, 3])
+
+    assert 2 == value[:value]
+
+    assert %{
+             __meta__: %{
+               errors: [validation: [message: "Expected a value to be one of [1]", got: 42]]
+             }
+           } = put_in(Value.one_of([1]), [:value], 42)
+  end
 end
