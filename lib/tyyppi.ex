@@ -16,28 +16,6 @@ defmodule Tyyppi do
   @doc false
   defguard is_params(params) when is_list(params) or is_atom(params)
 
-  @doc false
-  def setup_ast do
-    quote do
-      alias Tyyppi.Value
-
-      require Tyyppi
-
-      import Kernel, except: [defstruct: 1]
-      import Tyyppi.Struct, only: [defstruct: 1]
-
-      :ok
-    end
-  end
-
-  @doc false
-  defmacro __using__(opts \\ []) do
-    start? =
-      if Keyword.get(opts, :start, false), do: quote(do: Tyyppi.Stats.start_link()), else: []
-
-    [setup_ast(), start?]
-  end
-
   @doc """
   Parses the type as by spec and returns its `Tyyppi.T` representation.
 
@@ -255,4 +233,29 @@ defmodule Tyyppi do
 
   @doc false
   defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :void
+
+  @doc false
+  defmacro coproduct(types), do: {:|, [], types}
+
+  @doc false
+  def setup_ast do
+    quote do
+      alias Tyyppi.Value
+
+      require Tyyppi
+
+      import Kernel, except: [defstruct: 1]
+      import Tyyppi.Struct, only: [defstruct: 1]
+
+      :ok
+    end
+  end
+
+  @doc false
+  defmacro __using__(opts \\ []) do
+    start? =
+      if Keyword.get(opts, :start, false), do: quote(do: Tyyppi.Stats.start_link()), else: []
+
+    [setup_ast(), start?]
+  end
 end

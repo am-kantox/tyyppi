@@ -175,4 +175,21 @@ defmodule Test.Tyyppi.Value do
              }
            } = put_in(Value.one_of([1]), [:value], 42)
   end
+
+  test "list" do
+    assert value = %{__meta__: %{defined?: true}} = Value.list([1, 2, 3], Tyyppi.parse(integer()))
+
+    assert [1, 2, 3] == value[:value]
+
+    assert %{
+             __meta__: %{
+               errors: [
+                 validation: [
+                   message: "Expected all elements to be of type integer(). Failed: [:ok]",
+                   got: [:ok, 42]
+                 ]
+               ]
+             }
+           } = put_in(value, [:value], [:ok, 42])
+  end
 end

@@ -7,7 +7,6 @@ defmodule Tyyppi.Value do
   """
 
   require Tyyppi
-  require Tyyppi.T
 
   alias Tyyppi.Value.{Coercions, Validations}
 
@@ -332,6 +331,27 @@ defmodule Tyyppi.Value do
 
   @spec one_of(any(), [any()]) :: t()
   def one_of(value, allowed), do: allowed |> one_of() |> put_in([:value], value)
+
+  @spec list() :: t()
+  @doc "Creates a not defined `list` wrapped by `Tyyppi.Value`"
+  def list,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(list()),
+      validation: &Validations.list/2,
+      __context__: %{type: Tyyppi.parse(any())}
+    }
+
+  @spec list(options :: Tyyppy.T.t() | [factory_option()]) :: t()
+  @doc "Factory for `list` wrapped by `Tyyppi.Value`"
+  def list(%Tyyppi.T{} = type), do: %Tyyppi.Value{list() | __context__: %{type: type}}
+
+  def list(options) when is_list(options) do
+    {type, options} = Keyword.pop(options, :type, [])
+    type |> list() |> put_options(options)
+  end
+
+  @spec list(value :: list(), type :: Tyyppy.T.t()) :: t()
+  def list(value, %Tyyppi.T{} = type), do: list(value: value, type: type)
 
   #############################################################################
 
