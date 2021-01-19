@@ -192,4 +192,12 @@ defmodule Test.Tyyppi.Value do
              }
            } = put_in(value, [:value], [:ok, 42])
   end
+
+  test "formulae" do
+    assert value = %{__meta__: %{defined?: true}} = Value.formulae(2, "value + 40")
+    assert 42 == value[:value]
+
+    assert value = %{__meta__: %{defined?: true}} = Value.formulae(2, {Integer, :to_string, []})
+    assert "2" == value[:value]
+  end
 end

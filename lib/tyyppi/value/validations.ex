@@ -60,4 +60,21 @@ defmodule Tyyppi.Value.Validations do
         {:error, "Expected all elements to be of type #{type}. Failed: " <> inspect(errored)}
     end
   end
+
+  @spec formulae(any(), %{formulae: Formulae.t() | {module(), atom(), list()}}) ::
+          Tyyppi.Value.either()
+  def formulae(value, %{formulae: {mod, fun, args}}) do
+    case apply(mod, fun, [value | args]) do
+      {:ok, value} -> {:ok, value}
+      {:error, message} -> {:error, message}
+      value -> {:ok, value}
+    end
+  end
+
+  def formulae(value, %{formulae: %Formulae{} = formulae}) do
+    {:ok, formulae.eval.(value: value)}
+  rescue
+    e in [Formulae.SyntaxError, Formulae.RunnerError] ->
+      {:error, e.message}
+  end
 end

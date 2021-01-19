@@ -17,6 +17,55 @@ defmodule Tyyppi do
   defguard is_params(params) when is_list(params) or is_atom(params)
 
   @doc """
+  Sigil to simplify specification of `Tyyppi.T.t()` type, it’s literally the wrapper for `Tyyppi.parse/1`.
+
+  ## Examples
+      iex> import Tyyppi
+      iex> ~t[integer()]
+      %Tyyppi.T{
+        definition: {:type, 0, :integer, []},
+        module: nil,
+        name: nil,
+        params: [],
+        quoted: {:integer, [], []},
+        source: nil,
+        type: :built_in
+      }
+      ...> ~t[atom]
+      %Tyyppi.T{
+        definition: {:type, 0, :atom, []},
+        module: nil,
+        name: nil,
+        params: [],
+        quoted: {:atom, [], []},
+        source: nil,
+        type: :built_in
+      }
+  """
+  defmacro sigil_t({:<<>>, _meta, [string]}, []) when is_binary(string) do
+    quote bind_quoted: [string: string] do
+      string
+      |> :elixir_interpolation.unescape_chars()
+      |> Code.string_to_quoted!()
+      |> Tyyppi.parse_quoted()
+    end
+  end
+
+  defmacro sigil_t({:<<>>, meta, pieces}, []) do
+    tokens =
+      case :elixir_interpolation.unescape_tokens(pieces) do
+        {:ok, unescaped_tokens} -> unescaped_tokens
+        {:error, reason} -> raise ArgumentError, to_string(reason)
+      end
+
+    quote do
+      unquote({:<<>>, meta, tokens})
+      |> Code.string_to_quoted!()
+      |> Tyyppi.parse_quoted()
+    end
+  end
+
+  @doc """
   Parses the type as by spec and returns its `Tyyppi.T` representation.
 
   _Example:_
@@ -229,6 +278,9 @@ defmodule Tyyppi do
   end
 
   @doc false
+  defdelegate parse_quoted(type), to: Tyyppi.T
+
+  @doc false
   defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :void
 
   @doc false
@@ -238,17 +290,21 @@ defmodule Tyyppi do
   defmacro coproduct(types), do: {:|, [], types}
 
   @doc false
-  def setup_ast do
-    quote do
-      alias Tyyppi.Value
+  def setup_ast(import?) do
+    [
+      if(import?,
+        do: quote(do: import(Tyyppi)),
+        else: quote(do: require(Tyyppi))
+      ),
+      quote do
+        alias Tyyppi.Value
 
-      require Tyyppi
+        import Kernel, except: [defstruct: 1]
+        import Tyyppi.Struct, only: [defstruct: 1]
 
-      import Kernel, except: [defstruct: 1]
-      import Tyyppi.Struct, only: [defstruct: 1]
-
-      :ok
-    end
+        :ok
+      end
+    ]
   end
 
   @doc false
@@ -256,6 +312,8 @@ defmodule Tyyppi do
     start? =
       if Keyword.get(opts, :start, false), do: quote(do: Tyyppi.Stats.start_link()), else: []
 
-    [setup_ast(), start?]
+    import? = Keyword.get(opts, :import, false)
+
+    [setup_ast(import?), start?]
   end
 end

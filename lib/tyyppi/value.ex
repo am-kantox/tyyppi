@@ -332,6 +332,40 @@ defmodule Tyyppi.Value do
   @spec one_of(any(), [any()]) :: t()
   def one_of(value, allowed), do: allowed |> one_of() |> put_in([:value], value)
 
+  with {:module, Formulae} <- Code.ensure_loaded(Formulae) do
+    @spec formulae() :: t()
+    @doc "Creates a not defined `formulae` wrapped by `Tyyppi.Value`"
+    def formulae,
+      do: %Tyyppi.Value{
+        type: Tyyppi.parse(any()),
+        validation: &Validations.formulae/2
+      }
+
+    @spec formulae(options :: Formulae.t() | binary() | [{:formulae, any()} | factory_option()]) ::
+            t()
+    @doc "Factory for `formulae` wrapped by `Tyyppi.Value`"
+    def formulae(formulae) when is_binary(formulae),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+
+    def formulae(%Formulae{} = formulae),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+
+    def formulae({mod, fun, args}),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: {mod, fun, args}}}
+
+    def formulae(options) when is_list(options) do
+      {formulae, options} = Keyword.pop(options, :formulae, [])
+      formulae |> formulae() |> put_options(options)
+    end
+
+    @spec formulae(
+            value :: any(),
+            formulae :: Formulae.t() | binary() | {module(), atom(), list()}
+          ) :: t()
+    def formulae(value, {mod, fun, args}), do: formulae(value: value, formulae: {mod, fun, args})
+    def formulae(value, formulae), do: formulae(value: value, formulae: formulae)
+  end
+
   @spec list() :: t()
   @doc "Creates a not defined `list` wrapped by `Tyyppi.Value`"
   def list,
@@ -341,7 +375,7 @@ defmodule Tyyppi.Value do
       __context__: %{type: Tyyppi.parse(any())}
     }
 
-  @spec list(options :: Tyyppy.T.t() | [factory_option()]) :: t()
+  @spec list(options :: Tyyppi.T.t() | [{:type, Tyyppi.T.t()} | factory_option()]) :: t()
   @doc "Factory for `list` wrapped by `Tyyppi.Value`"
   def list(%Tyyppi.T{} = type), do: %Tyyppi.Value{list() | __context__: %{type: type}}
 
@@ -350,8 +384,8 @@ defmodule Tyyppi.Value do
     type |> list() |> put_options(options)
   end
 
-  @spec list(value :: list(), type :: Tyyppy.T.t()) :: t()
-  def list(value, %Tyyppi.T{} = type), do: list(value: value, type: type)
+  @spec list(value :: list(), type :: Tyyppi.T.t()) :: t()
+  def list(value, %Tyyppi.T{} = type) when is_list(value), do: list(value: value, type: type)
 
   #############################################################################
 
