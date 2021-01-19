@@ -332,37 +332,40 @@ defmodule Tyyppi.Value do
   @spec one_of(any(), [any()]) :: t()
   def one_of(value, allowed), do: allowed |> one_of() |> put_in([:value], value)
 
-  with {:module, Formulae} <- Code.ensure_loaded(Formulae) do
-    @spec formulae() :: t()
-    @doc "Creates a not defined `formulae` wrapped by `Tyyppi.Value`"
-    def formulae,
-      do: %Tyyppi.Value{
-        type: Tyyppi.parse(any()),
-        validation: &Validations.formulae/2
-      }
+  @spec formulae() :: t()
+  @doc "Creates a not defined `formulae` wrapped by `Tyyppi.Value`"
+  def formulae,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(any()),
+      validation: &Validations.formulae/2
+    }
 
-    @spec formulae(options :: Formulae.t() | binary() | [{:formulae, any()} | factory_option()]) ::
-            t()
-    @doc "Factory for `formulae` wrapped by `Tyyppi.Value`"
+  @spec formulae(options :: Formulae.t() | binary() | [{:formulae, any()} | factory_option()]) ::
+          t()
+  @doc "Factory for `formulae` wrapped by `Tyyppi.Value`"
+  with {:module, Formulae} <- Code.ensure_compiled(Formulae) do
     def formulae(formulae) when is_binary(formulae),
       do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
 
     def formulae(%Formulae{} = formulae),
       do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+  end
 
-    def formulae({mod, fun, args}),
-      do: %Tyyppi.Value{formulae() | __context__: %{formulae: {mod, fun, args}}}
+  def formulae({mod, fun, args}),
+    do: %Tyyppi.Value{formulae() | __context__: %{formulae: {mod, fun, args}}}
 
-    def formulae(options) when is_list(options) do
-      {formulae, options} = Keyword.pop(options, :formulae, [])
-      formulae |> formulae() |> put_options(options)
-    end
+  def formulae(options) when is_list(options) do
+    {formulae, options} = Keyword.pop(options, :formulae, [])
+    formulae |> formulae() |> put_options(options)
+  end
 
-    @spec formulae(
-            value :: any(),
-            formulae :: Formulae.t() | binary() | {module(), atom(), list()}
-          ) :: t()
-    def formulae(value, {mod, fun, args}), do: formulae(value: value, formulae: {mod, fun, args})
+  @spec formulae(
+          value :: any(),
+          formulae :: Formulae.t() | binary() | {module(), atom(), list()}
+        ) :: t()
+  def formulae(value, {mod, fun, args}), do: formulae(value: value, formulae: {mod, fun, args})
+
+  with {:module, Formulae} <- Code.ensure_compiled(Formulae) do
     def formulae(value, formulae), do: formulae(value: value, formulae: formulae)
   end
 

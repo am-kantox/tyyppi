@@ -61,20 +61,28 @@ defmodule Tyyppi.Value.Validations do
     end
   end
 
-  @spec formulae(any(), %{formulae: Formulae.t() | {module(), atom(), list()}}) ::
-          Tyyppi.Value.either()
+  case Code.ensure_compiled(Formulae) do
+    {:module, Formulae} ->
+      @spec formulae(any(), %{formulae: Formulae.t() | {module(), atom(), list()}}) ::
+              Tyyppi.Value.either()
+
+      def formulae(value, %{formulae: %Formulae{} = formulae}) do
+        {:ok, formulae.eval.(value: value)}
+      rescue
+        e in [Formulae.SyntaxError, Formulae.RunnerError] ->
+          {:error, e.message}
+      end
+
+    _ ->
+      @spec formulae(any(), %{formulae: {module(), atom(), list()}}) ::
+              Tyyppi.Value.either()
+  end
+
   def formulae(value, %{formulae: {mod, fun, args}}) do
     case apply(mod, fun, [value | args]) do
       {:ok, value} -> {:ok, value}
       {:error, message} -> {:error, message}
       value -> {:ok, value}
     end
-  end
-
-  def formulae(value, %{formulae: %Formulae{} = formulae}) do
-    {:ok, formulae.eval.(value: value)}
-  rescue
-    e in [Formulae.SyntaxError, Formulae.RunnerError] ->
-      {:error, e.message}
   end
 end
