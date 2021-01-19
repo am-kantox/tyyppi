@@ -6,11 +6,15 @@ defmodule Tyyppi.T do
 
   use Boundary, deps: [Tyyppi]
 
-  alias Tyyppi.{Function, Matchers, Stats, T}
+  alias Tyyppi.{Stats, T}
 
   require Logger
 
+  @doc false
+  defguardp is_params(params) when is_list(params) or is_atom(params)
+
   @typep kind :: :type | :remote_type | :user_type | :ann_type | :atom | :var
+  @typep ast_lead :: :->
   @typep visibility :: :typep | :type | :opaque | :built_in
   @typep simple ::
            nil
@@ -62,8 +66,8 @@ defmodule Tyyppi.T do
            | :tuple
            | :union
 
-  @type ast :: Macro.t()
-  @type raw :: {kind(), non_neg_integer(), simple() | [ast()], [ast()]}
+  @type ast :: Macro.t() | {module(), atom(), list() | nil | non_neg_integer()}
+  @type raw :: {kind() | ast_lead(), non_neg_integer() | keyword(), simple() | [ast()], [raw()]}
 
   @typedoc """
   The type information in a human-readable format.
@@ -83,108 +87,18 @@ defmodule Tyyppi.T do
 
   defstruct ~w|type module name params source definition quoted|a
 
-  @doc false
-  defguard is_params(params) when is_list(params) or is_atom(params)
-
   @spec loaded?(type :: T.t()) :: boolean()
   @doc "Returns `true` if the type definition was loaded, `false` otherwise."
   def loaded?(%T{definition: nil}), do: false
   def loaded?(%T{}), do: true
-
-  @doc """
-  Parses the type as by spec and returns its `Tyyppi.T` representation.
-
-  _Example:_
-
-      iex> require Tyyppi.T
-      ...> Tyyppi.T.parse(GenServer.on_start()) |> Map.put(:source, nil)
-      %Tyyppi.T{
-        definition: {:type, 704, :union,
-        [
-          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 704, :pid, []}]},
-          {:atom, 0, :ignore},
-          {:type, 0, :tuple,
-            [
-              {:atom, 0, :error},
-              {:type, 704, :union,
-              [
-                {:type, 0, :tuple,
-                  [{:atom, 0, :already_started}, {:type, 704, :pid, []}]},
-                {:type, 704, :term, []}
-              ]}
-            ]}
-        ]},
-        module: GenServer,
-        name: :on_start,
-        params: [],
-        source: nil,
-        quoted: {{:., [], [GenServer, :on_start]}, [], []},
-        type: :type
-      }
-  """
-  defmacro parse({:|, _, [_, _]} = type) do
-    quote bind_quoted: [union: Macro.escape(type)] do
-      union
-      |> T.union()
-      |> T.parse_definition()
-      |> Stats.type()
-    end
-  end
-
-  defmacro parse([{:->, _, [args, result]}]) do
-    type =
-      case args do
-        [{:..., _, _}] -> {:type, 0, :any}
-        args -> {:type, 0, :product, Enum.map(args, &parse_definition/1)}
-      end
-
-    result = parse_definition(result)
-
-    quote bind_quoted: [type: Macro.escape(type), result: Macro.escape(result)] do
-      Stats.type({:type, 0, :fun, [type, result]})
-    end
-  end
-
-  defmacro parse({{:., _, [module, fun]}, _, params}) when is_params(params) do
-    params = params |> normalize_params() |> length()
-
-    quote bind_quoted: [module: module, fun: fun, params: params] do
-      Stats.type({module, fun, params})
-    end
-  end
-
-  defmacro parse({{:., _, [{:__aliases__, _, aliases}, fun]}, _, params})
-           when is_params(params) do
-    params = params |> normalize_params() |> length()
-
-    quote bind_quoted: [aliases: aliases, fun: fun, params: params] do
-      Stats.type({Module.concat(aliases), fun, params})
-    end
-  end
-
-  defmacro parse({fun, _, params}) when is_atom(fun) and fun != :{} and is_params(params) do
-    quote bind_quoted: [fun: fun, params: param_names(params)] do
-      Stats.type({:type, 0, fun, params})
-    end
-  end
-
-  defmacro parse(any) do
-    Logger.debug("[🚰 T.parse/1]: " <> inspect(any))
-
-    quote bind_quoted: [any: Macro.escape(any)] do
-      any
-      |> T.parse_definition()
-      |> Stats.type()
-    end
-  end
 
   @spec parse_quoted({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) ::
           Tyyppi.T.t()
   @doc false
   def parse_quoted({:|, _, [_, _]} = union) do
     union
-    |> T.union()
-    |> T.parse_definition()
+    |> union()
+    |> parse_definition()
     |> Stats.type()
   end
 
@@ -206,82 +120,8 @@ defmodule Tyyppi.T do
     Logger.debug("[🚰 T.parse_quoted/1]: " <> inspect(any))
 
     any
-    |> T.parse_definition()
+    |> parse_definition()
     |> Stats.type()
-  end
-
-  @doc """
-  Returns `true` if the `term` passed as the second parameter is of type `type`.
-
-  _Examples:_
-
-      iex> require Tyyppi.T
-      ...> Tyyppi.T.of?(atom(), :ok)
-      true
-      ...> Tyyppi.T.of?(atom(), 42)
-      false
-      ...> Tyyppi.T.of?(GenServer.on_start(), {:error, {:already_started, self()}})
-      true
-      ...> Tyyppi.T.of?(GenServer.on_start(), :foo)
-      false
-  """
-  defmacro of?(type, term) do
-    quote do
-      %T{module: module, definition: definition} = T.parse(unquote(type))
-      Matchers.of?(module, definition, unquote(term))
-    end
-  end
-
-  @doc """
-  **Experimental:** applies the **external** function given as an argument
-    in the form `&Module.fun/arity` or **anonymous** function with arguments.
-    Validates the arguments given and the result produced by the call.
-
-  Only named types are supported at the moment.
-
-  If the number of arguments does not fit the arity of the type, returns
-    `{:error, {:arity, n}}` where `n` is the number of arguments passed.
-
-  If arguments did not pass the validation, returns `{:error, {:args, [arg1, arg2, ...]}}`
-    where `argN` are the arguments passed.
-
-  If both arity and types of arguments are ok, _evaluates_ the function and checks the
-    result against the type. Returns `{:ok, result}` _or_ `{:error, {:result, result}}`
-    if the validation did not pass.
-
-  _Example:_
-
-  ```elixir
-  require Tyyppi.T
-  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, foo: 2)
-  #⇒ {:ok,[foo_squared: 4]}
-  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, foo: :ok)
-  #⇒ {:error, {:args, :ok}}
-  Tyyppi.T.apply(MyModule.callback(), MyModule.on_info/1, [])
-  #⇒ {:error, {:arity, 0}}
-  ```
-  """
-  defmacro apply(type, fun, args) do
-    quote do
-      %T{module: module, definition: definition} = T.parse(unquote(type))
-      Function.apply(module, definition, unquote(fun), unquote(args))
-    end
-  end
-
-  @doc """
-  Applies the function from the current module, validating input arguments and output.
-
-  See `apply/3` for details.
-  """
-  defmacro apply(fun, args) do
-    quote do
-      with %{module: module, name: fun, arity: arity} <-
-             Map.new(Elixir.Function.info(unquote(fun))),
-           {:ok, specs} <- Code.Typespec.fetch_specs(module),
-           {{fun, arity}, [spec]} <- Enum.find(specs, &match?({{^fun, ^arity}, _}, &1)),
-           do: Function.apply(module, spec, unquote(fun), unquote(args)),
-           else: (result -> {:error, {:no_spec, result}})
-    end
   end
 
   @doc false
@@ -310,15 +150,25 @@ defmodule Tyyppi.T do
 
   @doc false
   @spec param_names([raw()] | any()) :: [atom()]
-  def param_names(params) do
-    if Keyword.keyword?(params),
-      do: Keyword.keys(params),
-      else: []
+  def param_names(params) when is_list(params) do
+    params
+    |> Enum.reduce([], fn kv, acc ->
+      case kv do
+        {k, _} -> [k | acc]
+        {k, _, _} -> [k | acc]
+        _ -> acc
+      end
+    end)
+    |> Enum.reverse()
   end
+
+  def param_names(_), do: []
 
   defimpl String.Chars do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
+
+    defp stringify({:type, _, type}), do: ~s|#{type}()|
 
     defp stringify({:type, _, type, params}) do
       params = params |> Enum.map(&stringify/1) |> Enum.join(", ")

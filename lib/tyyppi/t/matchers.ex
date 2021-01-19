@@ -27,7 +27,6 @@ defmodule Tyyppi.Matchers do
   #################### PRIMITIVES ###################
 
   def of?(_, {:type, _, :any, _}, _term), do: true
-  def of?(_, {:type, _, :term, _}, _term), do: true
 
   def of?(_, {:type, _, :atom, _}, atom) when is_atom(atom), do: true
   def of?(_, {:type, _, :module, _}, atom) when is_atom(atom), do: true
@@ -46,6 +45,13 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :pos_integer, _}, i) when is_integer(i) and i > 0, do: true
   def of?(_, {:type, _, :reference, _}, reference) when is_reference(reference), do: true
   def of?(_, {:type, _, :timeout, _}, timeout) when is_timeout(timeout), do: true
+
+  ################### BUILT INS #####################
+
+  def of?(x, {:type, z, :term, a}, term), do: of?(x, {:type, z, :any, a}, term)
+  def of?(_, {:type, _, :arity, _}, arity) when arity >= 0 and arity <= 255, do: true
+  def of?(x, {:type, z, :as_boolean, [t]}, term), do: of?(x, {:type, z, t, []}, term)
+  # FIXME def of?(_, {:type, _, :bitstring, [t]}, term), do: of?(x, {:type, z, t, []}, term)
 
   ##################### LISTS #######################
 
@@ -99,12 +105,16 @@ defmodule Tyyppi.Matchers do
       when is_function(fun, length(args)),
       do: true
 
-  def of?(_module, {:type, _, :fun, [{:type, _, :product, args}, _result_type]}, fun)
-      when is_function(fun, length(args)),
+  def of?(_module, {:type, _, f, [{:type, _, :product, args}, _result_type]}, fun)
+      when f in [:fun, :function] and is_function(fun, length(args)),
       do: true
 
-  def of?(_module, {:type, _, :fun, [{:type, _, :any}, _result_type]}, fun)
-      when is_function(fun),
+  def of?(_module, {:type, _, f, []}, fun)
+      when f in [:fun, :function] and is_function(fun),
+      do: true
+
+  def of?(_module, {:type, _, f, [{:type, _, :any}, _result_type]}, fun)
+      when f in [:fun, :function] and is_function(fun),
       do: true
 
   ###################### MAPS #######################
@@ -112,26 +122,34 @@ defmodule Tyyppi.Matchers do
   def of?(_, {:type, _, :map, []}, map) when is_map(map), do: true
   def of?(_, {:type, _, :map, :any}, map) when is_map(map), do: true
 
-  def of?(module, {:type, _, :map, types}, term) when is_map(term),
+  def of?(module, {:type, _, :map, types}, %{} = term),
     do: Enum.all?(types, &of?(module, &1, term))
 
-  def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, term)
-      when is_map(term),
-      do: of?(module, type, Map.get(term, name))
+  def of?(_, {:type, _, :map_field_exact, _}, %{} = term) when map_size(term) == 0,
+    do: false
 
-  def of?(module, {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]}, term)
-      when is_map(term) and map_size(term) > 0 do
-    Enum.all?(term, fn {k, v} ->
-      of?(module, key_type, k) and of?(module, value_type, v)
-    end)
-  end
+  def of?(module, {:type, _, :map_field_exact, [{:atom, _, name}, type]}, %{} = term),
+    do: of?(module, type, Map.get(term, name))
 
-  def of?(module, {:type, _, :map_field_assoc, [{:type, _, _, _} = key_type, value_type]}, term)
-      when is_map(term) do
-    Enum.all?(term, fn {k, v} ->
-      of?(module, key_type, k) and of?(module, value_type, v)
-    end)
-  end
+  def of?(
+        module,
+        {:type, _, :map_field_exact, [{:type, _, _, _} = key_type, value_type]},
+        %{} = term
+      ),
+      do:
+        Enum.all?(term, fn {k, v} ->
+          of?(module, key_type, k) and of?(module, value_type, v)
+        end)
+
+  def of?(
+        module,
+        {:type, _, :map_field_assoc, [{:type, _, _, _} = key_type, value_type]},
+        %{} = term
+      ),
+      do:
+        Enum.all?(term, fn {k, v} ->
+          of?(module, key_type, k) and of?(module, value_type, v)
+        end)
 
   ###################### UNION ######################
 

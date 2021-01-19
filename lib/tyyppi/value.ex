@@ -3,56 +3,88 @@ defmodule Tyyppi.Value do
   Value type to be used with `Tyyppi`.
 
   It wraps the standard _Elixir_ type in a struct, also providing optional coercion,
-    validation, and `Access` implementation.
+    validation, documentation, and `Access` implementation.
   """
 
-  use Tyyppi
+  require Tyyppi
+
+  alias Tyyppi.Value.{Coercions, Validations}
 
   @typedoc "Type of the value behind this struct"
   @type value :: any()
+
+  @typedoc "Type returned from coercions and validations, typical pair of ok/error tuples"
   @type either :: {:ok, value()} | {:error, any()}
+
+  @typedoc "Type of the coercion function allowed"
+  @type coercer :: (value() -> either())
+
+  @typedoc "Type of the validation function allowed"
+  @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
 
   @type t :: %{
           __struct__: Tyyppi.Value,
           value: value(),
+          documentation: String.t(),
           type: Tyyppi.T.t(),
-          coercion: (value() -> either()),
-          validation: (value() -> either()),
-          __meta__: %{defined?: boolean, errors: [any()]}
+          coercion: coercer(),
+          validation: validator(),
+          __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
+          __context__: %{optional(atom()) => any()}
         }
 
   defstruct value: nil,
             type: Tyyppi.parse(any()),
+            documentation: "",
             coercion: &Tyyppi.void_coercion/1,
             validation: &Tyyppi.void_validation/1,
-            __meta__: %{defined?: false, errors: []}
-
-  @behaviour Access
+            __meta__: %{subsection: "", defined?: false, errors: []},
+            __context__: %{}
 
   defmacrop defined,
     do: quote(do: %__MODULE__{__meta__: %{defined?: true}, value: var!(value)})
 
-  defmacrop errors,
-    do: quote(do: %__MODULE__{__meta__: %{defined?: false, errors: var!(errors)}})
-
   defmacrop meta,
+    do: quote(do: %__MODULE__{__meta__: var!(meta)})
+
+  defmacrop value,
     do: quote(do: %__MODULE__{__meta__: var!(meta), value: var!(value)})
 
-  @impl Access
-  def fetch(defined(), :value), do: {:ok, value}
-  def fetch(%__MODULE__{}, :value), do: :error
-  def fetch(errors(), :errors), do: {:ok, errors}
-  def fetch(%__MODULE__{}, :errors), do: :error
+  @behaviour Access
 
   @impl Access
-  def pop(meta() = data, :value),
-    do: {value, %__MODULE__{data | __meta__: Map.put(meta, :defined?, false), value: nil}}
+  @doc false
+  def fetch(defined(), :value), do: {:ok, value}
+  def fetch(%__MODULE__{}, :value), do: :error
+  def fetch(meta(), :errors) when meta.errors == [], do: :error
+  def fetch(meta(), :errors), do: {:ok, meta.errors}
+
+  def fetch(%__MODULE__{documentation: <<_::8, _::binary()>> = documentation}, :documentation),
+    do: {:ok, documentation}
+
+  def fetch(%__MODULE__{}, :documentation), do: :error
+
+  @impl Access
+  @doc false
+  def pop(value() = data, :value) do
+    {value, %__MODULE__{data | __meta__: Map.put(meta, :defined?, false), value: nil}}
+  end
+
+  def pop(meta() = data, :errors) do
+    {with([] <- meta.errors, do: nil), %__MODULE__{data | __meta__: Map.put(meta, :errors, [])}}
+  end
+
+  def pop(%__MODULE__{documentation: documentation} = data, :documentation),
+    do: {documentation, %__MODULE__{data | documentation: ""}}
 
   def pop(%__MODULE__{}, key),
     do: raise(BadStructError, struct: __MODULE__, term: key)
 
   @impl Access
-  def get_and_update(meta() = data, :value, fun) do
+  @doc false
+  def get_and_update(value() = data, :value, fun) do
+    # TODO cache it?
+
     case fun.(value) do
       :pop ->
         pop(data, :value)
@@ -61,7 +93,7 @@ defmodule Tyyppi.Value do
         update_value =
           with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(update_value)},
                true <- Tyyppi.of_type?(data.type, cast),
-               {:validation, {:ok, update_value}} <- {:validation, data.validation.(cast)} do
+               {:validation, {:ok, update_value}} <- {:validation, validation(data).(cast)} do
             %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: update_value}
           else
             false ->
@@ -81,6 +113,14 @@ defmodule Tyyppi.Value do
     do: raise(BadStructError, struct: __MODULE__, term: key)
 
   #############################################################################
+  @doc false
+  @spec validation(data :: t()) :: (value() -> either())
+  def validation(%__MODULE__{validation: f}) when is_function(f, 1), do: &f.(&1)
+
+  def validation(%__MODULE__{__context__: context, validation: f}) when is_function(f, 2),
+    do: &f.(&1, context)
+
+  def validation(%__MODULE__{}), do: &{:ok, &1}
 
   @spec value_type?(Tyyppi.T.t()) :: boolean()
   @doc false
@@ -95,259 +135,263 @@ defmodule Tyyppi.Value do
   def value?(%Tyyppi.Value{}), do: true
   def value?(_), do: false
 
-  #############################################################################
-
-  defmodule Coercions do
-    @moduledoc false
-
-    @spec void(any()) :: Tyyppi.Value.either()
-    def void(value), do: {:ok, value}
-
-    @spec atom(value :: any()) :: Tyyppi.Value.either()
-    def atom(atom) when is_atom(atom), do: {:ok, atom}
-    def atom(binary) when is_binary(binary), do: {:ok, String.to_atom(binary)}
-    def atom(charlist) when is_list(charlist), do: {:ok, :erlang.list_to_atom(charlist)}
-
-    def atom(_not_atom),
-      do: {:error, "Expected atom(), charlist() or binary()"}
-
-    @spec string(value :: any()) :: Tyyppi.Value.either()
-    def string(value) do
-      case String.Chars.impl_for(value) do
-        nil -> {:error, "protocol String.Chars must be implemented for the target"}
-        impl -> {:ok, impl.to_string(value)}
-      end
-    end
-
-    @spec boolean(value :: any()) :: Tyyppi.Value.either()
-    def boolean(bool) when is_boolean(bool), do: {:ok, bool}
-    def boolean(nil), do: {:ok, false}
-    def boolean(_not_nil), do: {:ok, true}
-
-    @spec integer(value :: any()) :: Tyyppi.Value.either()
-    def integer(i) when is_integer(i), do: {:ok, i}
-    def integer(n) when is_number(n), do: {:ok, round(n)}
-
-    def integer(binary) when is_binary(binary) do
-      case Integer.parse(binary) do
-        {i, ""} -> {:ok, i}
-        {i, tail} -> {:error, ~s|Trailing symbols while parsing integer [#{i}]: "#{tail}"|}
-        :error -> {:error, ~s|Error parsing integer: "#{binary}"|}
-      end
-    end
-
-    def integer(_not_integer),
-      do: {:error, "Expected number() or binary()"}
-
-    @spec timeout(value :: any()) :: Tyyppi.Value.either()
-    def timeout(:infinity), do: {:ok, :infinity}
-
-    def timeout(value) do
-      case integer(value) do
-        {:ok, value} -> {:ok, value}
-        {:error, _message} -> {:error, "Expected timeout()"}
-      end
-    end
-
-    @spec pid(value :: any()) :: Tyyppi.Value.either()
-    def pid(pid) when is_pid(pid), do: {:ok, pid}
-    def pid("#PID" <> maybe_pid), do: pid(maybe_pid)
-    def pid([_, _, _] = list), do: list |> Enum.join(".") |> pid()
-    def pid(value) when is_binary(value), do: value |> to_charlist() |> pid()
-    def pid([?< | value]), do: value |> List.delete_at(-1) |> pid()
-    def pid(value) when is_list(value), do: {:ok, :erlang.list_to_pid('<#{value}>')}
-
-    def pid(_value), do: {:error, "Expected a value that can be converted to pid()"}
-  end
+  @spec valid?(t()) :: boolean()
+  @doc false
+  def valid?(meta()) when meta.defined? == true, do: true
+  def valid?(_), do: false
 
   #############################################################################
 
-  defmodule Validations do
-    @moduledoc false
+  @typep factory_option :: {:value, any()} | {:documentation, String.t()}
 
-    @spec void(any()) :: Tyyppi.Value.either()
-    def void(value), do: {:ok, value}
+  @spec any() :: t()
+  @doc "Creates a not defined `any()` wrapped by `Tyyppi.Value`"
+  def any, do: %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1}
 
-    @spec non_neg_integer(value :: any()) :: Tyyppi.Value.either()
-    def non_neg_integer(i) when i >= 0, do: {:ok, i}
-    def non_neg_integer(_), do: {:error, "Must be greater or equal to zero"}
-
-    @spec pos_integer(value :: any()) :: Tyyppi.Value.either()
-    def pos_integer(i) when i > 0, do: {:ok, i}
-    def pos_integer(_), do: {:error, "Must be greater than zero"}
-
-    @spec timeout(value :: any()) :: Tyyppi.Value.either()
-    def timeout(:infinity), do: {:ok, :infinity}
-    def timeout(i) when i >= 0, do: {:ok, i}
-    def timeout(_), do: {:error, "Must be integer, greater or equal to zero, or :infinity atom"}
-
-    @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: Tyyppi.Value.either()
-    def mfa({m, f, a}) do
-      result =
-        with {:module, ^m} <- Code.ensure_compiled(m),
-             [_ | _] = funs <- m.__info__(:functions),
-             {^f, ^a} <- Enum.find(funs, &match?({^f, ^a}, &1)),
-             do: {:ok, {m, f, a}}
-
-      result || {:error, "#{inspect(m)} does not declare a function #{f} of arity #{a}"}
-    end
-
-    def mfa(_), do: {:error, "Must be mfa()"}
-
-    @spec mod_arg({m :: module(), args :: list()}) :: Tyyppi.Value.either()
-    def mod_arg({m, args}),
-      do: with({:module, ^m} <- Code.ensure_compiled(m), do: {:ok, {m, args}})
-
-    def mod_arg(_), do: {:error, "Must be a tuple with module and argument list"}
-  end
-
-  #############################################################################
-
-  @spec any(value :: any()) :: t()
+  @spec any(any() | [factory_option()]) :: t()
   @doc "Factory for `any()` wrapped by `Tyyppi.Value`"
-  def any(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1},
-      [:value],
-      value
-    )
-  end
+  def any([{:value, _} | _] = options), do: put_options(any(), options)
+  def any([{:documentation, _} | _] = options), do: put_options(any(), options)
+  def any(any), do: any(value: any)
 
-  @spec atom(value :: any()) :: t()
+  @spec atom() :: t()
+  @doc "Creates a not defined `atom()` wrapped by `Tyyppi.Value`"
+  def atom, do: %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1}
+
+  @spec atom(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `atom()` wrapped by `Tyyppi.Value`"
-  def atom(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1},
-      [:value],
-      value
-    )
-  end
+  def atom([{:value, _} | _] = options), do: put_options(atom(), options)
+  def atom([{:documentation, _} | _] = options), do: put_options(atom(), options)
+  def atom(atom), do: atom(value: atom)
 
-  @spec string(value :: String.t()) :: t()
+  @spec string() :: t()
+  @doc "Creates a not defined `String.t()` wrapped by `Tyyppi.Value`"
+  def string, do: %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1}
+
+  @spec string(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `String.t()` wrapped by `Tyyppi.Value`"
-  def string(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1},
-      [:value],
-      value
-    )
-  end
+  def string([{:value, _} | _] = options), do: put_options(string(), options)
+  def string([{:documentation, _} | _] = options), do: put_options(string(), options)
+  def string(string), do: string(value: string)
 
-  @spec boolean(value :: boolean()) :: t()
+  @spec boolean() :: t()
+  @doc "Creates a not defined `boolean()` wrapped by `Tyyppi.Value`"
+  def boolean, do: %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1}
+  @spec boolean(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `boolean()` wrapped by `Tyyppi.Value`"
-  def boolean(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1},
-      [:value],
-      value
-    )
-  end
+  def boolean(options) when is_list(options), do: put_options(boolean(), options)
+  def boolean(boolean), do: boolean(value: boolean)
 
-  @spec integer(value :: any()) :: t()
+  @spec integer() :: t()
+  @doc "Creates a not defined `integer()` wrapped by `Tyyppi.Value`"
+  def integer, do: %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1}
+  @spec integer(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `integer()` wrapped by `Tyyppi.Value`"
-  def integer(value) do
-    put_in(
-      %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1},
-      [:value],
-      value
-    )
-  end
+  def integer(options) when is_list(options), do: put_options(integer(), options)
+  def integer(integer), do: integer(value: integer)
 
-  @spec non_neg_integer(value :: any()) :: t()
+  @spec non_neg_integer() :: t()
+  @doc "Creates a not defined `non_neg_integer()` wrapped by `Tyyppi.Value`"
+  def non_neg_integer,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(non_neg_integer()),
+      coercion: &Coercions.integer/1,
+      validation: &Validations.non_neg_integer/1
+    }
+
+  @spec non_neg_integer(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `non_neg_integer()` wrapped by `Tyyppi.Value`"
-  def non_neg_integer(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(non_neg_integer()),
-        coercion: &Coercions.integer/1,
-        validation: &Validations.non_neg_integer/1
-      },
-      [:value],
-      value
-    )
-  end
+  def non_neg_integer(options) when is_list(options), do: put_options(non_neg_integer(), options)
+  def non_neg_integer(non_neg_integer), do: non_neg_integer(value: non_neg_integer)
 
-  @spec pos_integer(value :: any()) :: t()
+  @spec pos_integer() :: t()
+  @doc "Creates a not defined `pos_integer()` wrapped by `Tyyppi.Value`"
+  def pos_integer,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(pos_integer()),
+      coercion: &Coercions.integer/1,
+      validation: &Validations.pos_integer/1
+    }
+
+  @spec pos_integer(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `pos_integer()` wrapped by `Tyyppi.Value`"
-  def pos_integer(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(pos_integer()),
-        coercion: &Coercions.integer/1,
-        validation: &Validations.pos_integer/1
-      },
-      [:value],
-      value
-    )
-  end
+  def pos_integer(options) when is_list(options), do: put_options(pos_integer(), options)
+  def pos_integer(pos_integer), do: pos_integer(value: pos_integer)
 
-  @spec timeout(value :: any()) :: t()
+  @spec timeout() :: t()
+  @doc "Creates a not defined `timeout()` wrapped by `Tyyppi.Value`"
+  def timeout,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(timeout()),
+      coercion: &Coercions.timeout/1,
+      validation: &Validations.timeout/1
+    }
+
+  @spec timeout(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `timeout()` wrapped by `Tyyppi.Value`"
-  def timeout(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(timeout()),
-        coercion: &Coercions.timeout/1,
-        validation: &Validations.timeout/1
-      },
-      [:value],
-      value
-    )
-  end
+  def timeout(options) when is_list(options), do: put_options(timeout(), options)
+  def timeout(timeout), do: timeout(value: timeout)
 
-  @spec pid(value :: any()) :: t()
+  @spec pid() :: t()
+  @doc "Creates a not defined `pid()` wrapped by `Tyyppi.Value`"
+  def pid, do: %Tyyppi.Value{type: Tyyppi.parse(pid()), coercion: &Coercions.pid/1}
+
+  @spec pid(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
-  def pid(value) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse(pid()),
-        coercion: &Coercions.pid/1
-      },
-      [:value],
-      value
-    )
-  end
+  def pid([{:value, _} | _] = options), do: put_options(pid(), options)
+  def pid([{:documentation, _} | _] = options), do: put_options(pid(), options)
+  def pid(pid), do: pid(value: pid)
 
   @spec pid(p1 :: non_neg_integer(), p2 :: non_neg_integer(), p3 :: non_neg_integer()) :: t()
   @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
   def pid(p1, p2, p3)
       when is_integer(p1) and p1 >= 0 and is_integer(p2) and p2 >= 0 and is_integer(p3) and
              p3 >= 0,
-      do: [p1, p2, p3] |> Enum.join(".") |> pid()
+      do: pid(value: Enum.join([p1, p2, p3], "."))
 
-  @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: t()
+  @spec mfa() :: t()
+  @doc "Creates a not defined `mfa` wrapped by `Tyyppi.Value`"
+  def mfa,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
+      validation: &Validations.mfa/1
+    }
+
+  @spec mfa(options :: {module(), atom(), non_neg_integer()} | [factory_option()]) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
-  def mfa(mfa) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
-        validation: &Validations.mfa/1
-      },
-      [:value],
-      mfa
-    )
-  end
+  def mfa(options) when is_list(options), do: put_options(mfa(), options)
+  def mfa(mfa), do: mfa(value: mfa)
 
   @spec mfa(m :: module(), f :: atom(), a :: non_neg_integer()) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
-  def mfa(m, f, a) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0, do: mfa({m, f, a})
+  def mfa(m, f, a) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0,
+    do: mfa(value: {m, f, a})
 
-  @spec mod_arg({m :: module(), args :: list()}) :: t()
+  @spec mod_arg() :: t()
+  @doc "Creates a not defined `mod_arg` wrapped by `Tyyppi.Value`"
+  def mod_arg,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse({module(), list()}),
+      validation: &Validations.mod_arg/1
+    }
+
+  @spec mod_arg(options :: {module(), list()} | [factory_option()]) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
-  def mod_arg(mod_arg) do
-    put_in(
-      %Tyyppi.Value{
-        type: Tyyppi.parse({module(), list()}),
-        validation: &Validations.mod_arg/1
-      },
-      [:value],
-      mod_arg
-    )
-  end
+  def mod_arg(options) when is_list(options), do: put_options(mod_arg(), options)
+  def mod_arg(mod_arg), do: mod_arg(value: mod_arg)
 
   @spec mod_arg(m :: module(), args :: list()) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
-  def mod_arg(m, args) when is_atom(m) and is_list(args), do: mod_arg({m, args})
+  def mod_arg(m, args) when is_atom(m) and is_list(args), do: mod_arg(value: {m, args})
+
+  #############################################################################
+
+  @spec fun(:any | arity() | keyword() | fun()) :: t() | no_return
+  @doc "Creates a not defined `fun` wrapped by `Tyyppi.Value`"
+  def fun(arity \\ :any)
+
+  def fun(:any),
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(fun()),
+      validation: &Validations.fun/2
+    }
+
+  def fun(arity) when is_integer(arity) and arity >= 0 and arity <= 255,
+    do: %Tyyppi.Value{fun(:any) | __context__: %{arity: arity}}
+
+  def fun(options) when is_list(options),
+    do:
+      options
+      |> Keyword.get(:value, :any)
+      |> Function.info(:arity)
+      |> elem(1)
+      |> fun()
+      |> put_options(options)
+
+  def fun(f) when is_function(f), do: fun(value: f)
+
+  @spec do_one_of(keyword()) :: t()
+  defp do_one_of(options) when is_list(options) do
+    {allowed, options} = Keyword.pop(options, :allowed, [])
+    allowed |> one_of() |> put_options(options)
+  end
+
+  @spec one_of([any()]) :: t()
+  @doc "Creates a `one_of` value wrapped by `Tyyppi.Value`"
+  def one_of([{:value, _} | _] = options), do: do_one_of(options)
+  def one_of([{:documentation, _} | _] = options), do: do_one_of(options)
+  def one_of([{:allowed, _} | _] = options), do: do_one_of(options)
+
+  def one_of(allowed) when is_list(allowed),
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(any()),
+      validation: &Validations.one_of/2,
+      __context__: %{allowed: allowed}
+    }
+
+  @spec one_of(any(), [any()]) :: t()
+  def one_of(value, allowed), do: allowed |> one_of() |> put_in([:value], value)
+
+  with {:module, Formulae} <- Code.ensure_loaded(Formulae) do
+    @spec formulae() :: t()
+    @doc "Creates a not defined `formulae` wrapped by `Tyyppi.Value`"
+    def formulae,
+      do: %Tyyppi.Value{
+        type: Tyyppi.parse(any()),
+        validation: &Validations.formulae/2
+      }
+
+    @spec formulae(options :: Formulae.t() | binary() | [{:formulae, any()} | factory_option()]) ::
+            t()
+    @doc "Factory for `formulae` wrapped by `Tyyppi.Value`"
+    def formulae(formulae) when is_binary(formulae),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+
+    def formulae(%Formulae{} = formulae),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+
+    def formulae({mod, fun, args}),
+      do: %Tyyppi.Value{formulae() | __context__: %{formulae: {mod, fun, args}}}
+
+    def formulae(options) when is_list(options) do
+      {formulae, options} = Keyword.pop(options, :formulae, [])
+      formulae |> formulae() |> put_options(options)
+    end
+
+    @spec formulae(
+            value :: any(),
+            formulae :: Formulae.t() | binary() | {module(), atom(), list()}
+          ) :: t()
+    def formulae(value, {mod, fun, args}), do: formulae(value: value, formulae: {mod, fun, args})
+    def formulae(value, formulae), do: formulae(value: value, formulae: formulae)
+  end
+
+  @spec list() :: t()
+  @doc "Creates a not defined `list` wrapped by `Tyyppi.Value`"
+  def list,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(list()),
+      validation: &Validations.list/2,
+      __context__: %{type: Tyyppi.parse(any())}
+    }
+
+  @spec list(options :: Tyyppi.T.t() | [{:type, Tyyppi.T.t()} | factory_option()]) :: t()
+  @doc "Factory for `list` wrapped by `Tyyppi.Value`"
+  def list(%Tyyppi.T{} = type), do: %Tyyppi.Value{list() | __context__: %{type: type}}
+
+  def list(options) when is_list(options) do
+    {type, options} = Keyword.pop(options, :type, [])
+    type |> list() |> put_options(options)
+  end
+
+  @spec list(value :: list(), type :: Tyyppi.T.t()) :: t()
+  def list(value, %Tyyppi.T{} = type) when is_list(value), do: list(value: value, type: type)
+
+  #############################################################################
+
+  @spec put_options(acc :: t(), options :: [factory_option()]) :: t()
+  defp put_options(acc, options),
+    do: Enum.reduce(options, acc, fn {k, v}, acc -> put_in(acc, [k], v) end)
 
   #############################################################################
 
@@ -355,12 +399,17 @@ defmodule Tyyppi.Value do
     @moduledoc false
     import Inspect.Algebra
 
+    def inspect(%Tyyppi.Value{value: value, __meta__: %{errors: errors}}, opts)
+        when length(errors) > 0 do
+      concat(["‹❌#{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
+    end
+
     def inspect(%Tyyppi.Value{value: value, __meta__: %{defined?: true}}, opts) do
-      concat(["‹", to_doc(value, opts), "›"])
+      concat(["‹✔️", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value}, opts) do
-      concat(["‹✗", to_doc(value, opts), "›"])
+      concat(["‹❓", to_doc(value, opts), "›"])
     end
   end
 end

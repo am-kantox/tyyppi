@@ -1,7 +1,24 @@
 defmodule Test.Tyyppi.Value do
   use ExUnit.Case
 
+  require Tyyppi
   alias Tyyppi.Value
+
+  test "value?" do
+    assert :ok |> Value.any() |> Value.value?()
+    refute Value.valid?(42)
+  end
+
+  test "value_type?" do
+    assert Value.t() |> Tyyppi.parse() |> Value.value_type?()
+    refute GenServer.on_start() |> Tyyppi.parse() |> Value.value_type?()
+    refute integer() |> Tyyppi.parse() |> Value.value_type?()
+  end
+
+  test "valid?" do
+    assert :ok |> Value.any() |> Value.valid?()
+    refute Value.any() |> Value.valid?()
+  end
 
   test "any" do
     assert :ok == get_in(Value.any(:ok), [:value])
@@ -129,5 +146,58 @@ defmodule Test.Tyyppi.Value do
                errors: [type: [expected: "tuple(module(), list())", got: -42]]
              }
            } = Value.mod_arg(-42)
+  end
+
+  test "fun" do
+    assert value =
+             %{__meta__: %{defined?: true}, __context__: %{arity: 1}} =
+             Value.fun(&Integer.to_string/1)
+
+    assert "42" == value[:value].(42)
+
+    assert %{
+             __meta__: %{
+               errors: [type: [expected: "fun()", got: 42]]
+             }
+           } = put_in(Value.fun(), [:value], 42)
+  end
+
+  test "one_of" do
+    assert value =
+             %{__meta__: %{defined?: true}, __context__: %{allowed: [1, 2, 3]}} =
+             Value.one_of(2, [1, 2, 3])
+
+    assert 2 == value[:value]
+
+    assert %{
+             __meta__: %{
+               errors: [validation: [message: "Expected a value to be one of [1]", got: 42]]
+             }
+           } = put_in(Value.one_of([1]), [:value], 42)
+  end
+
+  test "list" do
+    assert value = %{__meta__: %{defined?: true}} = Value.list([1, 2, 3], Tyyppi.parse(integer()))
+
+    assert [1, 2, 3] == value[:value]
+
+    assert %{
+             __meta__: %{
+               errors: [
+                 validation: [
+                   message: "Expected all elements to be of type integer(). Failed: [:ok]",
+                   got: [:ok, 42]
+                 ]
+               ]
+             }
+           } = put_in(value, [:value], [:ok, 42])
+  end
+
+  test "formulae" do
+    assert value = %{__meta__: %{defined?: true}} = Value.formulae(2, "value + 40")
+    assert 42 == value[:value]
+
+    assert value = %{__meta__: %{defined?: true}} = Value.formulae(2, {Integer, :to_string, []})
+    assert "2" == value[:value]
   end
 end
