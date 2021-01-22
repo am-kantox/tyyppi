@@ -142,7 +142,10 @@ defmodule Tyyppi do
   defmacro parse({:%, _meta, [struct, {:%{}, meta, fields}]}),
     do: do_parse_map({:%{}, meta, [{:__struct__, struct} | fields]}, __CALLER__)
 
-  defmacro parse({fun, _, params}) when is_atom(fun) and fun != :{} and is_params(params) do
+  defmacro parse({_, _} = tuple), do: do_lookup(tuple)
+  defmacro parse({:{}, _, content} = tuple) when is_list(content), do: do_lookup(tuple)
+
+  defmacro parse({fun, _, params}) when is_atom(fun) and is_params(params) do
     quote bind_quoted: [fun: fun, params: param_names(params)] do
       Stats.type({:type, 0, fun, params})
     end
