@@ -51,12 +51,12 @@ defmodule Tyyppi.Matchers do
   def of?(x, {:type, z, :term, a}, term), do: of?(x, {:type, z, :any, a}, term)
   def of?(_, {:type, _, :arity, _}, arity) when arity >= 0 and arity <= 255, do: true
   def of?(x, {:type, z, :as_boolean, [t]}, term), do: of?(x, {:type, z, t, []}, term)
+
   @struct {:type, 0, :map,
-   [
-     {:type, 0, :map_field_exact,
-      [{:atom, 0, :__struct__}, {:type, 0, :atom, []}]},
-     {:type, 0, :map_field_assoc, [{:type, 0, :atom, []}, {:type, 0, :any, []}]}
-   ]}
+           [
+             {:type, 0, :map_field_exact, [{:atom, 0, :__struct__}, {:type, 0, :atom, []}]},
+             {:type, 0, :map_field_assoc, [{:type, 0, :atom, []}, {:type, 0, :any, []}]}
+           ]}
   def of?(x, {:type, _, :struct, []}, term), do: of?(x, @struct, term)
   # FIXME def of?(_, {:type, _, :bitstring, [t]}, term), do: of?(x, {:type, z, t, []}, term)
 

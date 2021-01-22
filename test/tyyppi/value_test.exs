@@ -206,7 +206,11 @@ defmodule Test.Tyyppi.Value do
     assert get_in(value, [:value, :baz]) == {:error, :reason}
 
     assert %{__meta__: %{defined?: false} = value} = Value.struct(DateTime.utc_now())
-    assert get_in(value, ~w|errors validation message|a) =~ ~r/The given struct does not respond to `validate\/1`/
-    assert %{__meta__: %{defined?: false, errors: [type: [expected: "struct()", got: 42]]}} = put_in(Value.struct(), [:value], 42)
+
+    assert get_in(value, ~w|errors validation message|a) =~
+             ~r/The given struct does not respond to `validate\/1`/
+
+    assert %{__meta__: %{defined?: false, errors: [type: [expected: "struct()", got: 42]]}} =
+             put_in(Value.struct(), [:value], 42)
   end
 end

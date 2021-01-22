@@ -158,11 +158,13 @@ defmodule Tyyppi do
       fields
       |> Enum.map(fn
         {{:optional, _, [name]}, type} ->
-          {:type, 0, :map_field_assoc, Enum.map([name, type], &parse_quoted(&1).definition )}
+          {:type, 0, :map_field_assoc, Enum.map([name, type], &parse_quoted(&1).definition)}
+
         {{:required, _, [name]}, type} ->
-          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition )}
+          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition)}
+
         {name, type} ->
-          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition )}
+          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition)}
       end)
       |> Macro.escape()
 
