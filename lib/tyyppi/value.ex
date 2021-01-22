@@ -460,15 +460,15 @@ defmodule Tyyppi.Value do
 
     def inspect(%Tyyppi.Value{value: value, __meta__: %{errors: errors}}, opts)
         when length(errors) > 0 do
-      concat(["‹❌#{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
+      concat(["‹✗#{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value, __meta__: %{defined?: true}}, opts) do
-      concat(["‹✔️", to_doc(value, opts), "›"])
+      concat(["‹✓", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value}, opts) do
-      concat(["‹❓", to_doc(value, opts), "›"])
+      concat(["‹‽", to_doc(value, opts), "›"])
     end
   end
 end
