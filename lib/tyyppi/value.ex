@@ -8,6 +8,7 @@ defmodule Tyyppi.Value do
 
   require Tyyppi
 
+  alias Tyyppi.Value
   alias Tyyppi.Value.{Coercions, Validations}
 
   @typedoc "Type of the value behind this struct"
@@ -389,6 +390,21 @@ defmodule Tyyppi.Value do
 
   @spec list(value :: list(), type :: Tyyppi.T.t()) :: t()
   def list(value, %Tyyppi.T{} = type) when is_list(value), do: list(value: value, type: type)
+
+  @spec struct() :: t()
+  @doc "Creates a not defined `struct` wrapped by `Tyyppi.Value`"
+  def struct,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(struct()),
+      validation: &Validations.struct/1
+    }
+
+  @spec struct(options :: [factory_option()]) :: t()
+  @doc "Factory for `struct` wrapped by `Tyyppi.Value`"
+  def struct(options) when is_list(options), do: Value.struct() |> put_options(options)
+
+  @spec struct(value :: struct()) :: t()
+  def struct(%_ts{} = value), do: Value.struct(value: value)
 
   #############################################################################
 
