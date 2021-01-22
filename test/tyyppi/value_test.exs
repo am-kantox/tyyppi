@@ -213,4 +213,24 @@ defmodule Test.Tyyppi.Value do
     assert %{__meta__: %{defined?: false, errors: [type: [expected: "struct()", got: 42]]}} =
              put_in(Value.struct(), [:value], 42)
   end
+
+  test "jason" do
+    assert Jason.encode(Value.integer(42)) == {:ok, "42"}
+    assert Jason.encode(Value.any(42)) == {:ok, "42"}
+    assert Jason.encode(Value.atom(:ok)) == {:ok, ~S|"ok"|}
+    assert Jason.encode(Value.string(42)) == {:ok, ~S|"42"|}
+    assert Jason.encode(Value.boolean(true)) == {:ok, "true"}
+    assert Jason.encode(Value.integer(42)) == {:ok, "42"}
+    assert Jason.encode(Value.non_neg_integer(42)) == {:ok, "42"}
+    assert Jason.encode(Value.pos_integer(42)) == {:ok, "42"}
+    assert Jason.encode(Value.timeout(:infinity)) == {:ok, ~S|"infinity"|}
+    assert Jason.encode(Value.pid(self())) == {:ok, self() |> :erlang.pid_to_list() |> inspect()}
+    # assert Jason.encode(Value.mfa(42)) == {:ok, "42"}
+    # assert Jason.encode(Value.mod_arg(42)) == {:ok, "42"}
+    # assert Jason.encode(Value.fun(42)) == {:ok, "42"}
+    assert Jason.encode(Value.one_of(42, [42, :ok])) == {:ok, "42"}
+    # assert Jason.encode(Value.formulae(42)) == {:ok, "42"}
+    assert Jason.encode(Value.list([42], Tyyppi.parse(integer()))) == {:ok, "[42]"}
+    # assert Jason.encode(Value.struct(42)) == {:ok, "42"}
+  end
 end

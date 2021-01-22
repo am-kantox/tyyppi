@@ -4,12 +4,31 @@ defmodule Tyyppi.Value do
 
   It wraps the standard _Elixir_ type in a struct, also providing optional coercion,
     validation, documentation, and `Access` implementation.
+
+  ## Built-in constructors
+
+  * `any` 
+  * `atom` 
+  * `string` 
+  * `boolean` 
+  * `integer` 
+  * `non_neg_integer` 
+  * `pos_integer` 
+  * `timeout` 
+  * `pid` 
+  * `mfa` 
+  * `mod_arg` 
+  * `fun` 
+  * `one_of` 
+  * `formulae` 
+  * `list` — creates a `[type()]` wrapped into a value
+  * `struct` 
   """
 
   require Tyyppi
 
   alias Tyyppi.Value
-  alias Tyyppi.Value.{Coercions, Validations}
+  alias Tyyppi.Value.{Coercions, Encodings, Validations}
 
   @typedoc "Type of the value behind this struct"
   @type value :: any()
@@ -19,6 +38,9 @@ defmodule Tyyppi.Value do
 
   @typedoc "Type of the coercion function allowed"
   @type coercer :: (value() -> either())
+
+  @typedoc "Type of the encoder function, that might be used for e. g. Json serialization"
+  @type encoder :: (value(), keyword() -> binary()) | nil
 
   @typedoc "Type of the validation function allowed"
   @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
@@ -30,6 +52,7 @@ defmodule Tyyppi.Value do
           type: Tyyppi.T.t(),
           coercion: coercer(),
           validation: validator(),
+          encoder: encoder(),
           __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
           __context__: %{optional(atom()) => any()}
         }
@@ -39,6 +62,7 @@ defmodule Tyyppi.Value do
             documentation: "",
             coercion: &Tyyppi.void_coercion/1,
             validation: &Tyyppi.void_validation/1,
+            encoder: nil,
             __meta__: %{subsection: "", defined?: false, errors: []},
             __context__: %{}
 
@@ -235,7 +259,12 @@ defmodule Tyyppi.Value do
 
   @spec pid() :: t()
   @doc "Creates a not defined `pid()` wrapped by `Tyyppi.Value`"
-  def pid, do: %Tyyppi.Value{type: Tyyppi.parse(pid()), coercion: &Coercions.pid/1}
+  def pid,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(pid()),
+      coercion: &Coercions.pid/1,
+      encoder: &Encodings.pid/2
+    }
 
   @spec pid(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `pid()` wrapped by `Tyyppi.Value`"
@@ -413,6 +442,17 @@ defmodule Tyyppi.Value do
     do: Enum.reduce(options, acc, fn {k, v}, acc -> put_in(acc, [k], v) end)
 
   #############################################################################
+
+  if Code.ensure_loaded?(Jason.Encoder) do
+    defimpl Jason.Encoder do
+      @moduledoc false
+      alias Jason.Encoder, as: E
+
+      def encode(%Tyyppi.Value{__meta__: %{defined?: false}}, opts), do: E.encode(nil, opts)
+      def encode(%Tyyppi.Value{encoder: nil, value: value}, opts), do: E.encode(value, opts)
+      def encode(%Tyyppi.Value{encoder: encoder, value: value}, opts), do: encoder.(value, opts)
+    end
+  end
 
   defimpl Inspect do
     @moduledoc false

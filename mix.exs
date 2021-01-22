@@ -40,7 +40,8 @@ defmodule Tyyppi.MixProject do
     [
       {:boundary, "~> 0.4", runtime: false},
       {:formulae, "~> 0.8", only: [:dev, :test]},
-      {:credo, "~> 1.0", only: [:dev, :ci]},
+      {:jason, "~> 1.0", only: [:dev, :test, :ci]},
+      {:credo, "~> 1.0", only: [:dev, :test, :ci]},
       {:dialyxir, "~> 1.0", only: [:dev, :test, :ci], runtime: false},
       {:ex_doc, "~> 0.11", only: :dev}
     ]

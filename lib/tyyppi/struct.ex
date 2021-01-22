@@ -244,7 +244,12 @@ defmodule Tyyppi.Struct do
         end
       end
 
-    [declaration, validation, casts_and_validates, update]
+    jason =
+      if Code.ensure_loaded?(Jason.Encoder),
+        do: [quote(do: @derive(Jason.Encoder))],
+        else: []
+
+    jason ++ [declaration, validation, casts_and_validates, update]
   end
 
   @doc "Puts the value to target under specified key, if passes validation"
