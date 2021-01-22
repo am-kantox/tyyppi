@@ -173,7 +173,7 @@ defmodule Tyyppi do
 
     quote location: :keep do
       %Tyyppi.T{
-        definition: {:type, 24, :map, unquote(fields)},
+        definition: {:type, 0, :map, unquote(fields)},
         module: nil,
         name: nil,
         params: [],
