@@ -136,6 +136,12 @@ defmodule Tyyppi do
     end
   end
 
+  defmacro parse({:%{}, _meta, fields} = quoted) when is_list(fields),
+    do: do_parse_map(quoted, __CALLER__)
+
+  defmacro parse({:%, _meta, [struct, {:%{}, meta, fields}]}),
+    do: do_parse_map({:%{}, meta, [{:__struct__, struct} | fields]}, __CALLER__)
+
   defmacro parse({fun, _, params}) when is_atom(fun) and fun != :{} and is_params(params) do
     quote bind_quoted: [fun: fun, params: param_names(params)] do
       Stats.type({:type, 0, fun, params})
@@ -144,7 +150,41 @@ defmodule Tyyppi do
 
   defmacro parse(any) do
     Logger.debug("[🚰 T.parse/1]: " <> inspect(any))
+    do_lookup(any)
+  end
 
+  defp do_parse_map({:%{}, _meta, fields} = quoted, caller) when is_list(fields) do
+    fields =
+      fields
+      |> Enum.map(fn
+        {{:optional, _, [name]}, type} ->
+          {:type, 0, :map_field_assoc, Enum.map([name, type], &parse_quoted(&1).definition)}
+
+        {{:required, _, [name]}, type} ->
+          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition)}
+
+        {name, type} ->
+          {:type, 0, :map_field_exact, Enum.map([name, type], &parse_quoted(&1).definition)}
+      end)
+      |> Macro.escape()
+
+    file = caller.file
+    quoted = Macro.escape(quoted, prune_metadata: true)
+
+    quote location: :keep do
+      %Tyyppi.T{
+        definition: {:type, 0, :map, unquote(fields)},
+        module: nil,
+        name: nil,
+        params: [],
+        quoted: unquote(quoted),
+        source: unquote(file),
+        type: :type
+      }
+    end
+  end
+
+  defp do_lookup(any) do
     quote bind_quoted: [any: Macro.escape(any)] do
       any
       |> T.parse_definition()
