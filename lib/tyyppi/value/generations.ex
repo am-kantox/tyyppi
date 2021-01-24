@@ -6,29 +6,32 @@ defmodule Tyyppi.Value.Generations do
 
   def any, do: SD.term()
 
-  def atom, do: atom(:alphanumeric)
-  def atom(kind) when is_atom(kind), do: SD.atom(kind)
+  def atom(kind \\ :alphanumeric) when is_atom(kind),
+    do: kind |> SD.atom() |> SD.map(&Value.atom/1)
 
-  def string, do: SD.binary()
-  def string(options) when is_list(options), do: SD.binary(options)
+  def string, do: SD.binary() |> SD.map(&Value.string/1)
 
-  def boolean, do: SD.boolean()
+  def string(options) when is_list(options),
+    do: options |> SD.binary() |> SD.map(&Value.string/1)
 
-  def integer, do: integer()
-  def integer(_.._ = range), do: SD.integer(range)
+  def boolean, do: SD.boolean() |> SD.map(&Value.boolean/1)
 
-  def non_neg_integer, do: SD.map(SD.integer(), &abs(&1))
+  def integer, do: SD.integer() |> SD.map(&Value.integer/1)
+  def integer(_.._ = range), do: range |> SD.integer() |> SD.map(&Value.integer/1)
+
+  def non_neg_integer,
+    do: SD.integer() |> SD.map(&abs(&1)) |> SD.map(&Value.integer/1)
+
   def non_neg_integer(top) when is_integer(top) and top > 0, do: integer(0..top)
 
-  def pos_integer, do: SD.positive_integer()
+  def pos_integer, do: SD.positive_integer() |> SD.map(&Value.pos_integer/1)
+  def pos_integer(top) when is_integer(top) and top > 0, do: integer(1..top)
 
-  def pos_integer(top) when is_integer(top) and top > 0,
-    do: 0..top |> integer() |> SD.filter(&(&1 > 0))
-
-  def timeout, do: SD.one_of([non_neg_integer(), SD.constant(:infinity)])
+  def timeout,
+    do: SD.one_of([non_neg_integer(), SD.constant(:infinity)]) |> SD.map(&Value.timeout/1)
 
   def timeout(top) when is_integer(top) and top > 0,
-    do: SD.one_of([integer(0..top), SD.constant(:infinity)])
+    do: SD.one_of([integer(0..top), SD.constant(:infinity)]) |> SD.map(&Value.timeout/1)
 
   def pid, do: pid(0..4096)
 
