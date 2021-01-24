@@ -2,6 +2,7 @@ defmodule Tyyppi.Value.Generations do
   @moduledoc false
 
   alias StreamData, as: SD
+  alias Tyyppi.Value
 
   def any, do: SD.term()
 
@@ -35,7 +36,7 @@ defmodule Tyyppi.Value.Generations do
     SD.bind(SD.constant(0), fn p1 ->
       SD.bind(SD.integer(l..r), fn p2 ->
         SD.bind(SD.integer(l..r), fn p3 ->
-          SD.constant(Tyyppi.Value.pid(p1, p2, p3))
+          SD.constant(Value.pid(p1, p2, p3))
         end)
       end)
     end)
@@ -51,7 +52,7 @@ defmodule Tyyppi.Value.Generations do
     SD.bind(SD.atom(:alias), fn mod ->
       SD.bind(SD.atom(:alphanumeric), fn fun ->
         SD.bind(SD.integer(0..max_arity), fn arity ->
-          SD.constant(Tyyppi.Value.mfa(value: {mod, fun, arity}, existing: existing))
+          SD.constant(Value.mfa(value: {mod, fun, arity}, existing: existing))
         end)
       end)
     end)
@@ -67,12 +68,13 @@ defmodule Tyyppi.Value.Generations do
 
     SD.bind(SD.atom(:alias), fn mod ->
       SD.bind(SD.list_of(args_generator, max_length: max_args_length), fn params ->
-        SD.constant(Tyyppi.Value.mod_arg(value: {mod, params}, existing: existing))
+        SD.constant(Value.mod_arg(value: {mod, params}, existing: existing))
       end)
     end)
   end
 
   defmodule FunStubs do
+    @moduledoc false
     Enum.each(0..12, fn arity ->
       args = Macro.generate_arguments(arity, __MODULE__)
       def f(unquote_splicing(args)), do: :ok
@@ -87,7 +89,7 @@ defmodule Tyyppi.Value.Generations do
     |> Keyword.get(:arity, Enum.to_list(0..12))
     |> List.wrap()
     |> Enum.map(&Function.capture(FunStubs, :f, &1))
-    |> Enum.map(&Tyyppi.Value.fun/1)
+    |> Enum.map(&Value.fun/1)
     |> Enum.map(&SD.constant/1)
     |> SD.one_of()
   end
@@ -98,7 +100,7 @@ defmodule Tyyppi.Value.Generations do
   def one_of(options) do
     options
     |> Keyword.get(:allowed, [])
-    |> Enum.map(&Tyyppi.Value.one_of/1)
+    |> Enum.map(&Value.one_of/1)
     |> Enum.map(&SD.constant/1)
     |> SD.one_of()
   end
