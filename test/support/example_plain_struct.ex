@@ -1,4 +1,4 @@
-defmodule Tyyppi.Example do
+defmodule Tyyppi.ExamplePlainStruct do
   @moduledoc """
   Example of the structure defined with `Tyyppi.Struct.defstruct/1`
 

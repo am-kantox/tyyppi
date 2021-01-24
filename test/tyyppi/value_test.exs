@@ -202,7 +202,7 @@ defmodule Test.Tyyppi.Value do
   end
 
   test "struct" do
-    assert value = %{__meta__: %{defined?: true}} = Value.struct(%Tyyppi.Example{})
+    assert value = %{__meta__: %{defined?: true}} = Value.struct(%Tyyppi.ExamplePlainStruct{})
     assert get_in(value, [:value, :baz]) == {:error, :reason}
 
     assert %{__meta__: %{defined?: false} = value} = Value.struct(DateTime.utc_now())
