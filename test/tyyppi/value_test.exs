@@ -121,7 +121,7 @@ defmodule Test.Tyyppi.Value do
 
     assert %{
              __meta__: %{
-               errors: [type: [expected: "tuple(module(), atom(), non_neg_integer())", got: -42]]
+               errors: [coercion: [message: "Unexpected value for a function", got: -42]]
              }
            } = Value.mfa(-42)
 
@@ -134,7 +134,7 @@ defmodule Test.Tyyppi.Value do
                  ]
                ]
              }
-           } = Value.mfa({Integer, :to_string, 0})
+           } = Value.mfa(value: {Integer, :to_string, 0}, existing: true)
   end
 
   test "mod_arg" do

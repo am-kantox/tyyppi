@@ -324,10 +324,10 @@ defmodule Tyyppi do
   defdelegate parse_quoted(type), to: Tyyppi.T
 
   @doc false
-  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :void
+  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :any
 
   @doc false
-  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :void
+  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :any
 
   @doc false
   defmacro coproduct(types), do: {:|, [], types}

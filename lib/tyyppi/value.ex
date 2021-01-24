@@ -28,7 +28,7 @@ defmodule Tyyppi.Value do
   require Tyyppi
 
   alias Tyyppi.Value
-  alias Tyyppi.Value.{Coercions, Encodings, Validations}
+  alias Tyyppi.Value.{Coercions, Encodings, Generations, Validations}
 
   @typedoc "Type of the value behind this struct"
   @type value :: any()
@@ -42,6 +42,13 @@ defmodule Tyyppi.Value do
   @typedoc "Type of the encoder function, that might be used for e. g. Json serialization"
   @type encoder :: (value(), keyword() -> binary()) | nil
 
+  @typedoc "Type of the generator function, producing the stream of `value()`"
+  if Code.ensure_loaded?(StreamData) do
+    @type generator :: (() -> StreamData.t(value())) | (any() -> StreamData.t(value()))
+  else
+    @type generator :: (() -> Enumerable.t()) | (any() -> Enumerable.t())
+  end
+
   @typedoc "Type of the validation function allowed"
   @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
 
@@ -52,7 +59,8 @@ defmodule Tyyppi.Value do
           type: Tyyppi.T.t(),
           coercion: coercer(),
           validation: validator(),
-          encoder: encoder(),
+          encoding: encoder(),
+          generation: {generator(), any()} | generator() | nil,
           __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
           __context__: %{optional(atom()) => any()}
         }
@@ -62,7 +70,8 @@ defmodule Tyyppi.Value do
             documentation: "",
             coercion: &Tyyppi.void_coercion/1,
             validation: &Tyyppi.void_validation/1,
-            encoder: nil,
+            encoding: nil,
+            generation: nil,
             __meta__: %{subsection: "", defined?: false, errors: []},
             __context__: %{}
 
@@ -147,6 +156,11 @@ defmodule Tyyppi.Value do
 
   def validation(%__MODULE__{}), do: &{:ok, &1}
 
+  @doc false
+  def generation(%__MODULE__{generation: {g, params}}) when is_function(g, 1), do: g.(params)
+  def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
+  def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
+
   @spec value_type?(Tyyppi.T.t()) :: boolean()
   @doc false
   def value_type?(%Tyyppi.T{quoted: quoted} = _type),
@@ -171,7 +185,12 @@ defmodule Tyyppi.Value do
 
   @spec any() :: t()
   @doc "Creates a not defined `any()` wrapped by `Tyyppi.Value`"
-  def any, do: %Tyyppi.Value{type: Tyyppi.parse(any()), coercion: &Tyyppi.void_coercion/1}
+  def any,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(any()),
+      coercion: &Coercions.any/1,
+      generation: &Generations.any/0
+    }
 
   @spec any(any() | [factory_option()]) :: t()
   @doc "Factory for `any()` wrapped by `Tyyppi.Value`"
@@ -181,7 +200,12 @@ defmodule Tyyppi.Value do
 
   @spec atom() :: t()
   @doc "Creates a not defined `atom()` wrapped by `Tyyppi.Value`"
-  def atom, do: %Tyyppi.Value{type: Tyyppi.parse(atom()), coercion: &Coercions.atom/1}
+  def atom,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(atom()),
+      coercion: &Coercions.atom/1,
+      generation: {&Generations.atom/1, :alphanumeric}
+    }
 
   @spec atom(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `atom()` wrapped by `Tyyppi.Value`"
@@ -201,7 +225,13 @@ defmodule Tyyppi.Value do
 
   @spec boolean() :: t()
   @doc "Creates a not defined `boolean()` wrapped by `Tyyppi.Value`"
-  def boolean, do: %Tyyppi.Value{type: Tyyppi.parse(boolean()), coercion: &Coercions.boolean/1}
+  def boolean,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(boolean()),
+      coercion: &Coercions.boolean/1,
+      generation: &Generations.boolean/0
+    }
+
   @spec boolean(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `boolean()` wrapped by `Tyyppi.Value`"
   def boolean(options) when is_list(options), do: put_options(boolean(), options)
@@ -209,7 +239,13 @@ defmodule Tyyppi.Value do
 
   @spec integer() :: t()
   @doc "Creates a not defined `integer()` wrapped by `Tyyppi.Value`"
-  def integer, do: %Tyyppi.Value{type: Tyyppi.parse(integer()), coercion: &Coercions.integer/1}
+  def integer,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(integer()),
+      coercion: &Coercions.integer/1,
+      generation: &Generations.integer/0
+    }
+
   @spec integer(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `integer()` wrapped by `Tyyppi.Value`"
   def integer(options) when is_list(options), do: put_options(integer(), options)
@@ -221,7 +257,8 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(non_neg_integer()),
       coercion: &Coercions.integer/1,
-      validation: &Validations.non_neg_integer/1
+      validation: &Validations.non_neg_integer/1,
+      generation: &Generations.non_neg_integer/0
     }
 
   @spec non_neg_integer(options :: any() | [factory_option()]) :: t()
@@ -235,7 +272,8 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(pos_integer()),
       coercion: &Coercions.integer/1,
-      validation: &Validations.pos_integer/1
+      validation: &Validations.pos_integer/1,
+      generation: &Generations.pos_integer/0
     }
 
   @spec pos_integer(options :: any() | [factory_option()]) :: t()
@@ -249,7 +287,8 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(timeout()),
       coercion: &Coercions.timeout/1,
-      validation: &Validations.timeout/1
+      validation: &Validations.timeout/1,
+      generation: &Generations.timeout/0
     }
 
   @spec timeout(options :: any() | [factory_option()]) :: t()
@@ -263,7 +302,8 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(pid()),
       coercion: &Coercions.pid/1,
-      encoder: &Encodings.pid/2
+      encoding: &Encodings.pid/2,
+      generation: &Generations.pid/0
     }
 
   @spec pid(options :: any() | [factory_option()]) :: t()
@@ -284,18 +324,33 @@ defmodule Tyyppi.Value do
   def mfa,
     do: %Tyyppi.Value{
       type: Tyyppi.parse({module(), atom(), non_neg_integer()}),
-      validation: &Validations.mfa/1
+      validation: &Validations.mfa/2,
+      coercion: &Coercions.mfa/1,
+      generation: &Generations.mfa/1
     }
 
-  @spec mfa(options :: {module(), atom(), non_neg_integer()} | [factory_option()]) :: t()
+  @spec mfa(
+          options ::
+            boolean()
+            | function()
+            | {module(), atom(), non_neg_integer()}
+            | [{:existing, boolean()} | factory_option()]
+        ) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
-  def mfa(options) when is_list(options), do: put_options(mfa(), options)
+  def mfa(existing) when is_boolean(existing),
+    do: %Tyyppi.Value{mfa() | __context__: %{existing: existing}}
+
+  def mfa(options) when is_list(options) do
+    {existing, options} = Keyword.pop(options, :existing, false)
+    existing |> mfa() |> put_options(options)
+  end
+
+  def mfa(fun) when is_function(fun), do: put_in(mfa(), [:value], fun)
   def mfa(mfa), do: mfa(value: mfa)
 
   @spec mfa(m :: module(), f :: atom(), a :: non_neg_integer()) :: t()
   @doc "Factory for `mfa` wrapped by `Tyyppi.Value`"
-  def mfa(m, f, a) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0,
-    do: mfa(value: {m, f, a})
+  def mfa(m, f, a), do: mfa(value: {m, f, a})
 
   @spec mod_arg() :: t()
   @doc "Creates a not defined `mod_arg` wrapped by `Tyyppi.Value`"
@@ -449,8 +504,8 @@ defmodule Tyyppi.Value do
       alias Jason.Encoder, as: E
 
       def encode(%Tyyppi.Value{__meta__: %{defined?: false}}, opts), do: E.encode(nil, opts)
-      def encode(%Tyyppi.Value{encoder: nil, value: value}, opts), do: E.encode(value, opts)
-      def encode(%Tyyppi.Value{encoder: encoder, value: value}, opts), do: encoder.(value, opts)
+      def encode(%Tyyppi.Value{encoding: nil, value: value}, opts), do: E.encode(value, opts)
+      def encode(%Tyyppi.Value{encoding: encoder, value: value}, opts), do: encoder.(value, opts)
     end
   end
 

@@ -1,8 +1,8 @@
 defmodule Tyyppi.Value.Validations do
   @moduledoc false
 
-  @spec void(any()) :: Tyyppi.Value.either()
-  def void(value), do: {:ok, value}
+  @spec any(any()) :: Tyyppi.Value.either()
+  def any(value), do: {:ok, value}
 
   @spec non_neg_integer(value :: integer()) :: Tyyppi.Value.either()
   def non_neg_integer(i) when i >= 0, do: {:ok, i}
@@ -17,16 +17,27 @@ defmodule Tyyppi.Value.Validations do
   def timeout(i) when i >= 0, do: {:ok, i}
   def timeout(_), do: {:error, "Must be integer, greater or equal to zero, or :infinity atom"}
 
-  @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}) :: Tyyppi.Value.either()
-  def mfa({m, f, a}) do
-    result =
-      with {:module, ^m} <- Code.ensure_compiled(m),
-           [_ | _] = funs <- m.__info__(:functions),
-           {^f, ^a} <- Enum.find(funs, &match?({^f, ^a}, &1)),
-           do: {:ok, {m, f, a}}
+  @spec pid(pid :: pid()) :: Tyyppi.Value.either()
+  def pid(pid) when is_pid(pid), do: {:ok, pid}
+  def pid(_), do: {:error, "Must be a `pid()`"}
 
-    result || {:error, "#{inspect(m)} does not declare a function #{f} of arity #{a}"}
+  @spec mfa({m :: module(), f :: atom(), a :: non_neg_integer()}, %{existing: boolean()}) ::
+          Tyyppi.Value.either()
+  def mfa({m, f, a}, %{existing: existing}) do
+    if existing do
+      with {:module, ^m} <- Code.ensure_compiled(m),
+           [_ | _] = funs <- m.module_info[:exports],
+           {^f, ^a} <- Enum.find(funs, &match?({^f, ^a}, &1)),
+           do: {:ok, {m, f, a}},
+           else: (_ -> {:error, "#{inspect(m)} does not declare a function #{f} of arity #{a}"})
+    else
+      if is_atom(m) and is_atom(f) and is_integer(a) and a >= 0,
+        do: {:ok, {m, f, a}},
+        else: {:error, "Expected an MFA in the form `{m, f, a}`"}
+    end
   end
+
+  def mfa({m, f, a}, _), do: mfa({m, f, a}, %{existing: false})
 
   @spec mod_arg({m :: module(), args :: list()}) :: Tyyppi.Value.either()
   def mod_arg({m, args}),
