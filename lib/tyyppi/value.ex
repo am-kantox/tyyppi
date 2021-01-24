@@ -181,7 +181,16 @@ defmodule Tyyppi.Value do
 
   #############################################################################
 
-  @typep factory_option :: {:value, any()} | {:documentation, String.t()}
+  @type factory_option ::
+          {:value, any()}
+          | {:documentation, String.t()}
+          | {:type, Tyyppi.T.t()}
+          | {:coercion, coercer()}
+          | {:validation, validator()}
+          | {:encoding, encoder()}
+          | {:generation, {generator(), any()} | generator() | nil}
+
+  @keys ~w|value documentation type coercion validation encoding generation|a
 
   @spec any() :: t()
   @doc "Creates a not defined `any()` wrapped by `Tyyppi.Value`"
@@ -357,12 +366,22 @@ defmodule Tyyppi.Value do
   def mod_arg,
     do: %Tyyppi.Value{
       type: Tyyppi.parse({module(), list()}),
-      validation: &Validations.mod_arg/1
+      validation: &Validations.mod_arg/2,
+      generation: &Generations.mod_arg/1
     }
 
-  @spec mod_arg(options :: {module(), list()} | [factory_option()]) :: t()
+  @spec mod_arg(
+          options :: boolean() | {module(), list()} | [{:existing, boolean()} | factory_option()]
+        ) :: t()
   @doc "Factory for `mod_arg` wrapped by `Tyyppi.Value`"
-  def mod_arg(options) when is_list(options), do: put_options(mod_arg(), options)
+  def mod_arg(existing) when is_boolean(existing),
+    do: %Tyyppi.Value{mod_arg() | __context__: %{existing: existing}}
+
+  def mod_arg(options) when is_list(options) do
+    {existing, options} = Keyword.pop(options, :existing, false)
+    existing |> mod_arg() |> put_options(options)
+  end
+
   def mod_arg(mod_arg), do: mod_arg(value: mod_arg)
 
   @spec mod_arg(m :: module(), args :: list()) :: t()
@@ -378,7 +397,8 @@ defmodule Tyyppi.Value do
   def fun(:any),
     do: %Tyyppi.Value{
       type: Tyyppi.parse(fun()),
-      validation: &Validations.fun/2
+      validation: &Validations.fun/2,
+      generation: &Generations.fun/1
     }
 
   def fun(arity) when is_integer(arity) and arity >= 0 and arity <= 255,
@@ -411,6 +431,7 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(any()),
       validation: &Validations.one_of/2,
+      generation: &Generations.one_of/1,
       __context__: %{allowed: allowed}
     }
 
@@ -422,18 +443,17 @@ defmodule Tyyppi.Value do
   def formulae,
     do: %Tyyppi.Value{
       type: Tyyppi.parse(any()),
-      validation: &Validations.formulae/2
+      validation: &Validations.formulae/2,
+      generation: &Generations.formulae/1
     }
 
   @spec formulae(options :: Formulae.t() | binary() | [{:formulae, any()} | factory_option()]) ::
           t()
   @doc "Factory for `formulae` wrapped by `Tyyppi.Value`"
   with {:module, Formulae} <- Code.ensure_compiled(Formulae) do
-    def formulae(formulae) when is_binary(formulae),
-      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
-
-    def formulae(%Formulae{} = formulae),
-      do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+    def formulae(formulae)
+        when is_binary(formulae) or (is_map(formulae) and formulae.__struct__ == Formulae),
+        do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
   end
 
   def formulae({mod, fun, args}),
@@ -460,6 +480,7 @@ defmodule Tyyppi.Value do
     do: %Tyyppi.Value{
       type: Tyyppi.parse(list()),
       validation: &Validations.list/2,
+      generation: &Generations.list/1,
       __context__: %{type: Tyyppi.parse(any())}
     }
 
@@ -480,7 +501,8 @@ defmodule Tyyppi.Value do
   def struct,
     do: %Tyyppi.Value{
       type: Tyyppi.parse(struct()),
-      validation: &Validations.struct/1
+      validation: &Validations.struct/1,
+      generation: &Generations.struct/1
     }
 
   @spec struct(options :: [factory_option()]) :: t()
@@ -493,8 +515,22 @@ defmodule Tyyppi.Value do
   #############################################################################
 
   @spec put_options(acc :: t(), options :: [factory_option()]) :: t()
-  defp put_options(acc, options),
-    do: Enum.reduce(options, acc, fn {k, v}, acc -> put_in(acc, [k], v) end)
+  defp put_options(acc, options) do
+    {result, unknowns} =
+      Enum.reduce(options, {acc, []}, fn
+        {k, v}, {acc, unknowns} when k in @keys ->
+          {put_in(acc, [k], v), unknowns}
+
+        {k, _}, {acc, unknowns} ->
+          {acc, [k | unknowns]}
+      end)
+
+    unless unknowns == [] do
+      raise("Unknown keys #{inspect(unknowns)} were ignored in `Value` constructor")
+    end
+
+    result
+  end
 
   #############################################################################
 

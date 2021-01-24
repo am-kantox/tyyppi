@@ -39,9 +39,11 @@ defmodule Tyyppi.Value.Validations do
 
   def mfa({m, f, a}, _), do: mfa({m, f, a}, %{existing: false})
 
-  @spec mod_arg({m :: module(), args :: list()}) :: Tyyppi.Value.either()
-  def mod_arg({m, args}),
+  @spec mod_arg({m :: module(), args :: list()}, %{existing: boolean()}) :: Tyyppi.Value.either()
+  def mod_arg({m, args}, %{existing: true}),
     do: with({:module, ^m} <- Code.ensure_compiled(m), do: {:ok, {m, args}})
+
+  def mod_arg({m, args}, _) when is_atom(m) and is_list(args), do: {:ok, {m, args}}
 
   @spec fun(f :: (... -> any()), %{arity: arity()}) :: Tyyppi.Value.either()
   def fun(f, %{arity: arity}) when is_function(f, arity), do: {:ok, f}
