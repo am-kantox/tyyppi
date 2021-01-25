@@ -212,6 +212,8 @@ defmodule Tyyppi.Struct do
         end)
       end
 
+      # FIXME to check defaults we’ll need to create a blank struct and to `put_in/3`
+      #       all the defaults in `__before_compile__/1`
       defaults = Module.get_attribute(__MODULE__, :defaults, [])
       struct_declaration = Enum.map(@fields, &{&1, Keyword.get(defaults, &1)})
 
@@ -301,7 +303,13 @@ defmodule Tyyppi.Struct do
                   put_in(value, [:value], cast)
 
                 _ ->
-                  cast
+                  value = get_in(target, [field])
+                  IO.inspect({field, T.collectable?(types[field])}, label: "update")
+
+                  # FIXME
+                  if T.collectable?(value) and T.enumerable?(cast),
+                    do: Enum.into(cast, value),
+                    else: cast
               end
 
             acc =

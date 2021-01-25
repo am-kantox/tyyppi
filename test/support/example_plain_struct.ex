@@ -27,7 +27,7 @@ defmodule Tyyppi.ExamplePlainStruct do
 
   @type my_struct :: %DateTime{}
 
-  @defaults bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}
+  @defaults bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}
   defstruct foo: atom(), bar: GenServer.on_start(), baz: my_type()
 
   defp cast_baz(true), do: :ok
