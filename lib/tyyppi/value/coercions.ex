@@ -1,8 +1,8 @@
 defmodule Tyyppi.Value.Coercions do
   @moduledoc false
 
-  @spec void(any()) :: Tyyppi.Value.either()
-  def void(value), do: {:ok, value}
+  @spec any(any()) :: Tyyppi.Value.either()
+  def any(value), do: {:ok, value}
 
   @spec atom(value :: any()) :: Tyyppi.Value.either()
   def atom(atom) when is_atom(atom), do: {:ok, atom}
@@ -40,6 +40,31 @@ defmodule Tyyppi.Value.Coercions do
   def integer(_not_integer),
     do: {:error, "Expected number() or binary()"}
 
+  @spec date_time(value :: any()) :: Tyyppi.Value.either()
+  def date_time(%DateTime{} = dt), do: {:ok, dt}
+
+  def date_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, dt, _offset} ->
+        {:ok, dt}
+
+      {:error, reason} ->
+        {:error, "Expected DateTime() or binary() or integer(). Reason: [#{reason}]."}
+    end
+  end
+
+  def date_time(value) when is_integer(value) do
+    case DateTime.from_unix(value) do
+      {:ok, dt} ->
+        {:ok, dt}
+
+      {:error, reason} ->
+        {:error, "Expected DateTime() or binary() or integer(). Reason: [#{reason}]."}
+    end
+  end
+
+  def date_time(_), do: {:error, "Expected DateTime() or binary() or integer()."}
+
   @spec timeout(value :: any()) :: Tyyppi.Value.either()
   def timeout(:infinity), do: {:ok, :infinity}
 
@@ -59,4 +84,20 @@ defmodule Tyyppi.Value.Coercions do
   def pid(value) when is_list(value), do: {:ok, :erlang.list_to_pid('<#{value}>')}
 
   def pid(_value), do: {:error, "Expected a value that can be converted to pid()"}
+
+  @spec mfa(value :: any()) :: Tyyppi.Value.either()
+  def mfa(fun) when is_function(fun) do
+    info = Function.info(fun)
+
+    case info[:type] do
+      :external -> {:ok, {info[:module], info[:name], info[:arity]}}
+      :local -> {:error, "Cannot capture local functions"}
+      other -> {:error, "Cannot capture #{other} functions"}
+    end
+  end
+
+  def mfa({m, f, a}) when is_atom(m) and is_atom(f) and is_integer(a) and a >= 0,
+    do: {:ok, {m, f, a}}
+
+  def mfa(_), do: {:error, "Unexpected value for a function"}
 end

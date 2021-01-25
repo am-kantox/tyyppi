@@ -1,4 +1,4 @@
-defmodule Tyyppi.Example do
+defmodule Tyyppi.ExamplePlainStruct do
   @moduledoc """
   Example of the structure defined with `Tyyppi.Struct.defstruct/1`
 
@@ -27,7 +27,7 @@ defmodule Tyyppi.Example do
 
   @type my_struct :: %DateTime{}
 
-  @defaults bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}
+  @defaults bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}
   defstruct foo: atom(), bar: GenServer.on_start(), baz: my_type()
 
   defp cast_baz(true), do: :ok

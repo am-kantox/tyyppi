@@ -70,6 +70,20 @@ defmodule Test.Tyyppi.Value do
              Value.pos_integer(0)
   end
 
+  test "date_time" do
+    assert ~U[1970-01-01 00:00:42Z] == get_in(Value.date_time(42), [:value])
+    assert ~U[1973-09-30 02:46:30Z] == get_in(Value.date_time("1973-09-30T02:46:30Z"), [:value])
+    assert ~U[1969-12-31 23:59:18Z] == get_in(Value.date_time(-42), [:value])
+
+    assert %{
+             __meta__: %{
+               errors: [
+                 coercion: [message: "Expected DateTime() or binary() or integer().", got: :ok]
+               ]
+             }
+           } = Value.date_time(:ok)
+  end
+
   test "timeout" do
     assert 42 == get_in(Value.timeout(42), [:value])
     assert 42 == get_in(Value.timeout("42"), [:value])
@@ -121,7 +135,7 @@ defmodule Test.Tyyppi.Value do
 
     assert %{
              __meta__: %{
-               errors: [type: [expected: "tuple(module(), atom(), non_neg_integer())", got: -42]]
+               errors: [coercion: [message: "Unexpected value for a function", got: -42]]
              }
            } = Value.mfa(-42)
 
@@ -134,7 +148,7 @@ defmodule Test.Tyyppi.Value do
                  ]
                ]
              }
-           } = Value.mfa({Integer, :to_string, 0})
+           } = Value.mfa(value: {Integer, :to_string, 0}, existing: true)
   end
 
   test "mod_arg" do
@@ -202,7 +216,7 @@ defmodule Test.Tyyppi.Value do
   end
 
   test "struct" do
-    assert value = %{__meta__: %{defined?: true}} = Value.struct(%Tyyppi.Example{})
+    assert value = %{__meta__: %{defined?: true}} = Value.struct(%Tyyppi.ExamplePlainStruct{})
     assert get_in(value, [:value, :baz]) == {:error, :reason}
 
     assert %{__meta__: %{defined?: false} = value} = Value.struct(DateTime.utc_now())

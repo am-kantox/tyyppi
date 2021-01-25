@@ -250,6 +250,11 @@ defmodule Tyyppi do
   def of_type?(%T{module: module, definition: definition}, term),
     do: Matchers.of?(module, definition, term)
 
+  def of_type?(nil, term) do
+    Logger.debug("[🚰 Tyyppi.of_type?/2]: " <> inspect(term))
+    false
+  end
+
   @doc """
   **Experimental:** applies the **local** function given as an argument
     in the form `&Module.fun/arity` or **anonymous** function with arguments.
@@ -324,10 +329,10 @@ defmodule Tyyppi do
   defdelegate parse_quoted(type), to: Tyyppi.T
 
   @doc false
-  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :void
+  defdelegate void_validation(value), to: Tyyppi.Value.Validations, as: :any
 
   @doc false
-  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :void
+  defdelegate void_coercion(value), to: Tyyppi.Value.Coercions, as: :any
 
   @doc false
   defmacro coproduct(types), do: {:|, [], types}
@@ -359,4 +364,7 @@ defmodule Tyyppi do
 
     [setup_ast(import?), start?]
   end
+
+  @doc false
+  def any, do: parse(any())
 end

@@ -164,6 +164,27 @@ defmodule Tyyppi.T do
 
   def param_names(_), do: []
 
+  # FIXME
+  @doc false
+  def collectable?(%Tyyppi.T{
+        definition:
+          {:type, _, :map,
+           [{:type, _, :map_field_exact, [{:atom, _, :__struct__}, {:atom, _, _struct}]} | _]}
+      }),
+      do: false
+
+  def collectable?(any), do: not is_nil(Collectable.impl_for(any))
+
+  @doc false
+  def enumerable?(%Tyyppi.T{
+        definition:
+          {:type, _, :map,
+           [{:type, _, :map_field_exact, [{:atom, _, :__struct__}, {:atom, _, _struct}]} | _]}
+      }),
+      do: false
+
+  def enumerable?(any), do: not is_nil(Enumerable.impl_for(any))
+
   defimpl String.Chars do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T

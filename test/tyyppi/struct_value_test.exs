@@ -27,9 +27,11 @@ defmodule Test.Tyyppi.StructValue do
               ]
             ]} = Struct.update(ex, :bar, fn _ -> 101 end)
 
-    assert_raise BadStructError, "expected a struct named Tyyppi.ExampleValue, got: :baz", fn ->
-      put_in(ex, [:baz], 5)
-    end
+    assert_raise BadStructError,
+                 "expected a struct named Tyyppi.ExampleValue, got: :baz",
+                 fn ->
+                   put_in(ex, [:baz], 5)
+                 end
 
     assert_raise ArgumentError, ~r"\Acould not put/update key :bar with value :ok", fn ->
       put_in(ex, [:bar], :ok)
