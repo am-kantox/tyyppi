@@ -40,6 +40,31 @@ defmodule Tyyppi.Value.Coercions do
   def integer(_not_integer),
     do: {:error, "Expected number() or binary()"}
 
+  @spec date_time(value :: any()) :: Tyyppi.Value.either()
+  def date_time(%DateTime{} = dt), do: {:ok, dt}
+
+  def date_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, dt, _offset} ->
+        {:ok, dt}
+
+      {:error, reason} ->
+        {:error, "Expected DateTime() or binary() or integer(). Reason: [#{reason}]."}
+    end
+  end
+
+  def date_time(value) when is_integer(value) do
+    case DateTime.from_unix(value) do
+      {:ok, dt} ->
+        {:ok, dt}
+
+      {:error, reason} ->
+        {:error, "Expected DateTime() or binary() or integer(). Reason: [#{reason}]."}
+    end
+  end
+
+  def date_time(_), do: {:error, "Expected DateTime() or binary() or integer()."}
+
   @spec timeout(value :: any()) :: Tyyppi.Value.either()
   def timeout(:infinity), do: {:ok, :infinity}
 

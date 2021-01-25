@@ -49,7 +49,7 @@ defmodule Tyyppi.Struct do
 
       iex> %Tyyppi.ExamplePlainStruct{}
       %Tyyppi.ExamplePlainStruct{
-        bar: :erlang.list_to_pid('<0.0.0>'), baz: {:error, :reason}, foo: nil}
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}, foo: nil}
 
   ## Upserts
 
@@ -304,7 +304,6 @@ defmodule Tyyppi.Struct do
 
                 _ ->
                   value = get_in(target, [field])
-                  IO.inspect({field, T.collectable?(types[field])}, label: "update")
 
                   # FIXME
                   if T.collectable?(value) and T.enumerable?(cast),

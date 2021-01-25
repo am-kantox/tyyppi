@@ -70,6 +70,20 @@ defmodule Test.Tyyppi.Value do
              Value.pos_integer(0)
   end
 
+  test "date_time" do
+    assert ~U[1970-01-01 00:00:42Z] == get_in(Value.date_time(42), [:value])
+    assert ~U[1973-09-30 02:46:30Z] == get_in(Value.date_time("1973-09-30T02:46:30Z"), [:value])
+    assert ~U[1969-12-31 23:59:18Z] == get_in(Value.date_time(-42), [:value])
+
+    assert %{
+             __meta__: %{
+               errors: [
+                 coercion: [message: "Expected DateTime() or binary() or integer().", got: :ok]
+               ]
+             }
+           } = Value.date_time(:ok)
+  end
+
   test "timeout" do
     assert 42 == get_in(Value.timeout(42), [:value])
     assert 42 == get_in(Value.timeout("42"), [:value])

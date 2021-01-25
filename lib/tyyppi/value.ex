@@ -296,6 +296,20 @@ defmodule Tyyppi.Value do
   def pos_integer(options) when is_list(options), do: put_options(pos_integer(), options)
   def pos_integer(pos_integer), do: pos_integer(value: pos_integer)
 
+  @spec date_time() :: t()
+  @doc "Creates a not defined `date_time()` wrapped by `Tyyppi.Value`"
+  def date_time,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(DateTime.t()),
+      coercion: &Coercions.date_time/1,
+      generation: &Generations.date_time/0
+    }
+
+  @spec date_time(options :: any() | [factory_option()]) :: t()
+  @doc "Factory for `timeout()` wrapped by `Tyyppi.Value`"
+  def date_time(options) when is_list(options), do: put_options(date_time(), options)
+  def date_time(date_time), do: date_time(value: date_time)
+
   @spec timeout() :: t()
   @doc "Creates a not defined `timeout()` wrapped by `Tyyppi.Value`"
   def timeout,
@@ -557,15 +571,15 @@ defmodule Tyyppi.Value do
 
     def inspect(%Tyyppi.Value{value: value, __meta__: %{errors: errors}}, opts)
         when length(errors) > 0 do
-      concat(["‹✗#{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
+      concat(["‹✗ #{inspect(Keyword.keys(errors))} ", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value, __meta__: %{defined?: true}}, opts) do
-      concat(["‹✓", to_doc(value, opts), "›"])
+      concat(["‹", to_doc(value, opts), "›"])
     end
 
     def inspect(%Tyyppi.Value{value: value}, opts) do
-      concat(["‹‽", to_doc(value, opts), "›"])
+      concat(["‹‽ ", to_doc(value, opts), "›"])
     end
   end
 end
