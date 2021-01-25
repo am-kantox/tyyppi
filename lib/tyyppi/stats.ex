@@ -59,6 +59,7 @@ defmodule Tyyppi.Stats do
       nil -> __MODULE__ |> :ets.info() |> type_from_ets(fun)
     end
     |> case do
+      # FIXME FIXME
       nil -> Tyyppi.any()
       %T{} = t -> t
     end

@@ -82,6 +82,7 @@ defmodule Tyyppi.Struct do
 
     quoted_types =
       quote bind_quoted: [definition: Macro.escape(definition)] do
+        # FIXME Private types
         user_type = fn {type, _, _} ->
           __MODULE__
           |> Module.get_attribute(:type)
