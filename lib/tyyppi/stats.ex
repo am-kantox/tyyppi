@@ -51,15 +51,21 @@ defmodule Tyyppi.Stats do
   Retrieves the type information for the type given.
   """
 
-  def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
-    do: module |> Function.capture(fun, arity) |> type()
-
   def type(fun) when is_function(fun) do
-    case Process.whereis(__MODULE__) do
+    __MODULE__
+    |> Process.whereis()
+    |> case do
       pid when is_pid(pid) -> __MODULE__ |> GenServer.call(:types) |> Map.get(fun)
       nil -> __MODULE__ |> :ets.info() |> type_from_ets(fun)
     end
+    |> case do
+      nil -> Tyyppi.any()
+      %T{} = t -> t
+    end
   end
+
+  def type({module, fun, arity}) when is_atom(module) and is_atom(fun) and is_integer(arity),
+    do: module |> Function.capture(fun, arity) |> type()
 
   def type(definition) when is_tuple(definition) do
     %T{

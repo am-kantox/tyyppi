@@ -25,6 +25,7 @@ defmodule Tyyppi.Value do
   * `struct` 
   """
 
+  require Logger
   require Tyyppi
 
   alias Tyyppi.Value
@@ -161,10 +162,15 @@ defmodule Tyyppi.Value do
   def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
   def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
 
-  @spec value_type?(Tyyppi.T.t()) :: boolean()
+  @spec value_type?(nil | Tyyppi.T.t()) :: boolean()
   @doc false
   def value_type?(%Tyyppi.T{quoted: quoted} = _type),
     do: Tyyppi.parse(Tyyppi.Value.t()).quoted == quoted
+
+  def value_type?(nil) do
+    Logger.debug("[🚰 Tyyppi.Value.value_type?/1]")
+    false
+  end
 
   @doc "Helper guard to match Value instances"
   defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value

@@ -12,13 +12,11 @@ defmodule Tyyppi.Matchers do
 
   def of?(module, {:user_type, _, name, params}, term) do
     %{module: module, definition: definition} = Stats.type({module, name, length(params)})
-
     of?(module, definition, term)
   end
 
   def of?(_module, {:remote_type, _, [{:atom, 0, module}, {:atom, 0, name}, params]}, term) do
     %{module: module, definition: definition} = Stats.type({module, name, length(params)})
-
     of?(module, definition, term)
   end
 
