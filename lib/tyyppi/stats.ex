@@ -175,7 +175,11 @@ defmodule Tyyppi.Stats do
 
   @spec types_from_ets(:undefined | keyword()) :: info()
   defp types_from_ets(:undefined) do
-    :ets.new(__MODULE__, [:set, :named_table, :public])
+    try do
+      :ets.new(__MODULE__, [:set, :named_table, :public])
+    rescue
+      _ in [ArgumentError] -> :ok
+    end
 
     result = loaded_types(nil, nil)
     Enum.each(result, &:ets.insert(__MODULE__, &1))

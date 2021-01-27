@@ -119,7 +119,11 @@ defmodule Tyyppi.Struct do
     enumerable = do_enumerable()
     casts_and_validates = do_casts_and_validates()
     update = do_update()
-    generation = do_generation()
+
+    generation =
+      if Code.ensure_loaded?(StreamData),
+        do: do_generation(),
+        else: []
 
     jason =
       if Code.ensure_loaded?(Jason.Encoder),
@@ -145,7 +149,6 @@ defmodule Tyyppi.Struct do
   def put(%type{} = target, key, value) when is_atom(key), do: type.update(target, [{key, value}])
 
   @doc "Puts the value to target under specified key, if passes validation, raises otherwise"
-  @dialyzer {:nowarn_function, put!: 3}
   @spec put!(target :: struct, key :: atom(), value :: any()) :: struct
         when struct: %{required(atom()) => any()}
   def put!(%_type{} = target, key, value) when is_atom(key) do
@@ -417,6 +420,7 @@ defmodule Tyyppi.Struct do
         do: generation_bound(this, Macro.expand(fields, __CALLER__))
 
       @doc false
+      @dialyzer {:nowarn_function, generation: 1}
       @spec generation(t()) :: Tyyppi.Value.generator()
       def generation(%__MODULE__{} = this) do
         this
