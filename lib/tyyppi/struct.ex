@@ -116,15 +116,26 @@ defmodule Tyyppi.Struct do
     declaration = do_declaration(quoted_types, struct_typespec)
     validation = do_validation()
     collectable = do_collectable()
+    enumerable = do_enumerable()
     casts_and_validates = do_casts_and_validates()
     update = do_update()
+    generation = do_generation()
 
     jason =
       if Code.ensure_loaded?(Jason.Encoder),
         do: [quote(do: @derive(Jason.Encoder))],
         else: []
 
-    [declaration, validation, collectable, casts_and_validates, update, jason]
+    [
+      declaration,
+      validation,
+      casts_and_validates,
+      update,
+      generation,
+      collectable,
+      enumerable,
+      jason
+    ]
   end
 
   @doc "Puts the value to target under specified key, if passes validation"
@@ -259,6 +270,38 @@ defmodule Tyyppi.Struct do
     end
   end
 
+  defp do_enumerable do
+    quote location: :keep, unquote: false do
+      fields = @fields
+      count = length(fields)
+
+      defimpl Enumerable do
+        @moduledoc false
+        alias Tyyppi.Struct
+
+        def slice(enumerable), do: {:error, __MODULE__}
+
+        def count(_), do: {:ok, unquote(count)}
+
+        def member?(map, {field, value}) when field in unquote(fields),
+          do: {:ok, match?({:ok, ^value}, :maps.find(field, map))}
+
+        def member?(_, _), do: {:ok, false}
+
+        def reduce(map, acc, fun),
+          do: do_reduce(map |> Map.from_struct() |> :maps.to_list(), acc, fun)
+
+        defp do_reduce(_, {:halt, acc}, _fun), do: {:halted, acc}
+
+        defp do_reduce(list, {:suspend, acc}, fun),
+          do: {:suspended, acc, &do_reduce(list, &1, fun)}
+
+        defp do_reduce([], {:cont, acc}, _fun), do: {:done, acc}
+        defp do_reduce([h | t], {:cont, acc}, fun), do: do_reduce(t, fun.(h, acc), fun)
+      end
+    end
+  end
+
   defp do_casts_and_validates do
     quote location: :keep, unquote: false do
       funs =
@@ -344,6 +387,46 @@ defmodule Tyyppi.Struct do
              do: {:ok, result},
              else: (%{errors: errors} -> {:error, errors})
       end
+    end
+  end
+
+  defp do_generation do
+    quote location: :keep, unquote: false do
+      defp generation_leaf(args),
+        do:
+          {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :constant]}, [],
+           [{:{}, [], args}]}
+
+      defp generation_clause(this, {field, arg}, acc) do
+        {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :bind]}, [],
+         [
+           {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Value]}, :generation]}, [],
+            [{{:., [], [this, field]}, [no_parens: true], []}]},
+           {:fn, [], [{:->, [], [[arg], acc]}]}
+         ]}
+      end
+
+      defp generation_bound(this, fields) do
+        args = fields |> length() |> Macro.generate_arguments(__MODULE__) |> Enum.reverse()
+        fields_args = Enum.zip(fields, args)
+
+        Enum.reduce(fields_args, generation_leaf(args), &generation_clause(this, &1, &2))
+      end
+
+      defmacrop do_generation(this, fields),
+        do: generation_bound(this, Macro.expand(fields, __CALLER__))
+
+      @doc false
+      @spec generation(t()) :: Tyyppi.Value.generator()
+      def generation(%__MODULE__{} = this) do
+        this
+        |> do_generation(@fields)
+        |> StreamData.map(&Tuple.to_list/1)
+        |> StreamData.map(&Enum.zip(@fields, &1))
+        |> StreamData.map(&Enum.into(&1, this))
+      end
+
+      defoverridable generation: 1
     end
   end
 end

@@ -28,7 +28,7 @@ defmodule Tyyppi.Value.Generations do
   def pos_integer(top) when is_integer(top) and top > 0, do: integer(1..top)
 
   def date_time,
-    do: SD.map(non_neg_integer(), &Value.date_time/1)
+    do: SD.integer() |> SD.map(&abs(&1)) |> SD.map(&Value.date_time/1)
 
   def timeout,
     do: SD.one_of([non_neg_integer(), SD.constant(:infinity)]) |> SD.map(&Value.timeout/1)

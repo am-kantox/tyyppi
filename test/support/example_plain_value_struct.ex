@@ -9,7 +9,7 @@ defmodule Tyyppi.ExamplePlainValueStruct do
   @type my_type :: DateTime.t()
 
   @defaults bar: Value.date_time(42), baz: Value.date_time(~U[1973-09-30 02:46:30Z])
-  defstruct foo: atom(), bar: DateTime.t(), baz: my_type()
+  defstruct foo: Value.t(), bar: Value.t(), baz: Value.t()
 
   defp cast_baz(true), do: DateTime.utc_now()
   defp cast_baz(value), do: value

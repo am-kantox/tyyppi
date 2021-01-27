@@ -95,6 +95,7 @@ defmodule Tyyppi.MixProject do
           Tyyppi.T
         ],
         Examples: [
+          Tyyppi.ExamplePlainStructValue,
           Tyyppi.ExamplePlainStruct,
           Tyyppi.ExampleValue
         ]

@@ -158,6 +158,7 @@ defmodule Tyyppi.Value do
   def validation(%__MODULE__{}), do: &{:ok, &1}
 
   @doc false
+  @spec generation(t()) :: generator()
   def generation(%__MODULE__{generation: {g, params}}) when is_function(g, 1), do: g.(params)
   def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
   def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
