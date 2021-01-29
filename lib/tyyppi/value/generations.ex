@@ -115,6 +115,12 @@ if Code.ensure_loaded?(StreamData) do
     def formulae(_options), do: raise("Not Implemented")
     def list(_options), do: raise("Not Implemented")
     def struct(_options), do: raise("Not Implemented")
+
+    def optional(generation) when is_function(generation, 0),
+      do: SD.bind(generation.(), &SD.constant(Enum.random([&1, nil])))
+
+    def optional({generation, params}) when is_function(generation, 1),
+      do: SD.bind(generation.(params), &SD.constant(Enum.random([&1, nil])))
   end
 else
   defmodule Tyyppi.Value.Generations do
@@ -131,11 +137,11 @@ else
 
     def boolean, do: Stream.cycle([true, false])
 
-    def integer, do: Stream.cycle([-1, 0, 3])
+    def integer, do: Stream.iterate(-42, &(&1 + 1))
 
-    def non_neg_integer(_top \\ 42), do: Stream.cycle([0, 3])
+    def non_neg_integer(top \\ 42), do: Stream.cycle(0..top)
 
-    def pos_integer(_top \\ 42), do: Stream.cycle([3])
+    def pos_integer(top \\ 42), do: Stream.cycle(1..top)
 
     def date_time, do: Stream.cycle([DateTime.from_unix!(0)])
 
@@ -150,6 +156,12 @@ else
     def fun(_opts \\ []), do: Stream.cycle([fn -> :ok end])
 
     def one_of(_opts \\ []), do: Stream.cycle([:ok])
+
+    def optional(generation) when is_function(generation, 0),
+      do: Stream.transform(generation.(), nil, &{[Enum.random([&1, &2])], &2})
+
+    def optional({generation, params}) when is_function(generation, 1),
+      do: Stream.transform(generation.(params), nil, &{[Enum.random([&1, &2])], &2})
 
     def formulae(_options), do: raise("Not Implemented")
     def list(_options), do: raise("Not Implemented")

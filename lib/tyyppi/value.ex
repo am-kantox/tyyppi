@@ -62,7 +62,12 @@ defmodule Tyyppi.Value do
           validation: validator(),
           encoding: encoder(),
           generation: {generator(), any()} | generator() | nil,
-          __meta__: %{subsection: String.t(), defined?: boolean(), errors: [any()]},
+          __meta__: %{
+            defined?: boolean(),
+            optional?: boolean(),
+            errors: [any()],
+            subsection: String.t()
+          },
           __context__: %{optional(atom()) => any()}
         }
 
@@ -73,7 +78,7 @@ defmodule Tyyppi.Value do
             validation: &Tyyppi.void_validation/1,
             encoding: nil,
             generation: nil,
-            __meta__: %{subsection: "", defined?: false, errors: []},
+            __meta__: %{defined?: false, optional?: false, errors: [], subsection: ""},
             __context__: %{}
 
   defmacrop defined,
@@ -123,6 +128,9 @@ defmodule Tyyppi.Value do
     case fun.(value) do
       :pop ->
         pop(data, :value)
+
+      {get_value, nil} when meta.optional? ->
+        {get_value, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
 
       {get_value, update_value} ->
         update_value =
@@ -565,6 +573,13 @@ defmodule Tyyppi.Value do
     end
 
     result
+  end
+
+  def optional(%Value{__meta__: meta} = value) do
+    type = Tyyppi.parse_quoted({:|, [], [nil, value.type.quoted]})
+    generation = {&Generations.optional/1, value.generation}
+    meta = %{meta | optional?: true}
+    %Value{value | type: type, generation: generation, __meta__: meta}
   end
 
   #############################################################################
