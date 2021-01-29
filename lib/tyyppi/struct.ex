@@ -395,11 +395,13 @@ defmodule Tyyppi.Struct do
 
   defp do_generation do
     quote location: :keep, unquote: false do
+      @dialyzer {:nowarn_function, generation_leaf: 1}
       defp generation_leaf(args),
         do:
           {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :constant]}, [],
            [{:{}, [], args}]}
 
+      @dialyzer {:nowarn_function, generation_clause: 3}
       defp generation_clause(this, {field, arg}, acc) do
         {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :bind]}, [],
          [
@@ -409,6 +411,7 @@ defmodule Tyyppi.Struct do
          ]}
       end
 
+      @dialyzer {:nowarn_function, generation_bound: 2}
       defp generation_bound(this, fields) do
         args = fields |> length() |> Macro.generate_arguments(__MODULE__) |> Enum.reverse()
         fields_args = Enum.zip(fields, args)
