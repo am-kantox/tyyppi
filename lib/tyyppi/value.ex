@@ -123,15 +123,20 @@ defmodule Tyyppi.Value do
 
   @impl Access
   @doc false
-  def get_and_update(%__MODULE__{value: value} = data, :value, fun) do
+  def get_and_update(value() = data, :value, fun) do
     case fun.(value) do
       :pop ->
         pop(data, :value)
 
       {get_value, update_value} ->
         case validate(data, update_value) do
-          {:ok, update_value} -> {get_value, update_value}
-          {:error, error} -> raise ArgumentError, message: inspect(error)
+          {:ok, update_value} ->
+            {get_value, update_value}
+
+          # raise ArgumentError, message: inspect(error)
+          {:error, error} ->
+            meta = %{meta | defined?: false, errors: error ++ meta.errors}
+            {get_value, %__MODULE__{data | __meta__: meta}}
         end
     end
   end

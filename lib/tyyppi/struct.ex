@@ -249,11 +249,19 @@ defmodule Tyyppi.Struct do
       @spec validate(t()) :: {:ok, t()} | {:error, term()}
       def validate(%__MODULE__{} = s) do
         s
-        |> Enum.reduce({s, []}, fn {key, %type{} = value}, {%__MODULE__{} = acc, errors} ->
-          case type.validate(value) do
-            {:ok, value} -> {Map.put(acc, key, value), errors}
-            {:error, error} -> {acc, [error | errors]}
-          end
+        |> Enum.reduce({s, []}, fn
+          {key, %type{} = value}, {%__MODULE__{} = acc, errors} ->
+            if type.__info__(:functions)[:validate] == 1 do
+              case type.validate(value) do
+                {:ok, value} -> {Map.put(acc, key, value), errors}
+                {:error, error} -> {acc, error ++ errors}
+              end
+            else
+              {acc, errors}
+            end
+
+          {_, _}, {acc, errors} ->
+            {acc, errors}
         end)
         |> case do
           {validated, []} -> {:ok, validated}

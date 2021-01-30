@@ -37,8 +37,8 @@ defmodule Test.Tyyppi.Value do
       ko = %Value{Value.atom(:ok) | value: 42}
       assert Value.validate(ok)
 
-      assert [coercion: [message: "Expected atom(), charlist() or binary()", got: 42]] ==
-               Value.validate(ko)[:errors]
+      assert {:error, [coercion: [message: "Expected atom(), charlist() or binary()", got: 42]]} ==
+               Value.validate(ko)
     end
   end
 
