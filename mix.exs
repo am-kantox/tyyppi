@@ -2,7 +2,7 @@ defmodule Tyyppi.MixProject do
   use Mix.Project
 
   @app :tyyppi
-  @version "0.6.0"
+  @version "0.7.0"
 
   def project do
     [
@@ -95,9 +95,8 @@ defmodule Tyyppi.MixProject do
           Tyyppi.T
         ],
         Examples: [
-          Tyyppi.ExamplePlainStructValue,
-          Tyyppi.ExamplePlainStruct,
-          Tyyppi.ExampleValue
+          Tyyppi.Example.Struct,
+          Tyyppi.Example.Value
         ]
       ]
     ]

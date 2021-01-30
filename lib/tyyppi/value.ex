@@ -53,11 +53,11 @@ defmodule Tyyppi.Value do
   @typedoc "Type of the validation function allowed"
   @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
 
-  @type t :: %{
+  @type t(wrapped) :: %{
           __struct__: Tyyppi.Value,
           value: value(),
           documentation: String.t(),
-          type: Tyyppi.T.t(),
+          type: Tyyppi.T.t(wrapped),
           coercion: coercer(),
           validation: validator(),
           encoding: encoder(),
@@ -70,6 +70,7 @@ defmodule Tyyppi.Value do
           },
           __context__: %{optional(atom()) => any()}
         }
+  @type t() :: t(term())
 
   defstruct value: nil,
             type: Tyyppi.parse(any()),
@@ -122,33 +123,10 @@ defmodule Tyyppi.Value do
 
   @impl Access
   @doc false
-  def get_and_update(value() = data, :value, fun) do
-    # TODO cache it?
-
+  def get_and_update(%__MODULE__{value: value} = data, :value, fun) do
     case fun.(value) do
-      :pop ->
-        pop(data, :value)
-
-      {get_value, nil} when meta.optional? ->
-        {get_value, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
-
-      {get_value, update_value} ->
-        update_value =
-          with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(update_value)},
-               true <- Tyyppi.of_type?(data.type, cast),
-               {:validation, {:ok, update_value}} <- {:validation, validation(data).(cast)} do
-            %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: update_value}
-          else
-            false ->
-              errors = [type: [expected: to_string(data.type), got: update_value]]
-              %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
-
-            {operation, {:error, error}} ->
-              errors = [{operation, [message: error, got: update_value]}]
-              %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
-          end
-
-        {get_value, update_value}
+      :pop -> pop(data, :value)
+      {get_value, update_value} -> {get_value, validate(data, update_value)}
     end
   end
 
@@ -158,12 +136,48 @@ defmodule Tyyppi.Value do
   #############################################################################
   @doc false
   @spec validation(data :: t()) :: (value() -> either())
+  def validation(%__MODULE__{__meta__: %{optional?: true}, value: nil}), do: &{:ok, &1}
+
   def validation(%__MODULE__{validation: f}) when is_function(f, 1), do: &f.(&1)
 
-  def validation(%__MODULE__{__context__: context, validation: f}) when is_function(f, 2),
-    do: &f.(&1, context)
+  def validation(%__MODULE__{__context__: c, validation: f}) when is_function(f, 2),
+    do: &f.(&1, c)
 
   def validation(%__MODULE__{}), do: &{:ok, &1}
+
+  @doc false
+  @spec validate(t()) :: t()
+  def validate(%__MODULE__{value: value} = data), do: validate(data, value)
+
+  def validate(%__MODULE__{__meta__: %{optional?: true} = meta} = data, nil) do
+    if Tyyppi.of_type?(data.type, nil) do
+      %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}
+    else
+      errors = [type: [expected: to_string(data.type), got: nil]]
+      %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+    end
+  end
+
+  def validate(meta() = data, value) do
+    with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(value)},
+         true <- Tyyppi.of_type?(data.type, cast),
+         {:validation, {:ok, value}} <- {:validation, validation(data).(cast)} do
+      %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: value}
+    else
+      false ->
+        errors = [type: [expected: to_string(data.type), got: value]]
+        %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+
+      {operation, {:error, error}} ->
+        errors = [{operation, [message: error, got: value]}]
+        %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+    end
+  end
+
+  @doc false
+  @spec valid?(t()) :: boolean()
+  def valid?(meta()) when meta.defined? == true, do: true
+  def valid?(_), do: false
 
   @doc false
   @spec generation(t()) :: generator()
@@ -171,15 +185,10 @@ defmodule Tyyppi.Value do
   def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
   def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
 
-  @spec value_type?(nil | Tyyppi.T.t()) :: boolean()
+  @spec value_type?(nil | Tyyppi.T.t(wrapped)) :: boolean() when wrapped: term()
   @doc false
-  def value_type?(%Tyyppi.T{quoted: quoted} = _type),
-    do: Tyyppi.parse(Tyyppi.Value.t()).quoted == quoted
-
-  def value_type?(nil) do
-    Logger.debug("[🚰 Tyyppi.Value.value_type?/1]")
-    false
-  end
+  def value_type?(%Tyyppi.T{module: Tyyppi.Value, name: :t}), do: true
+  def value_type?(_), do: false
 
   @doc "Helper guard to match Value instances"
   defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
@@ -189,17 +198,12 @@ defmodule Tyyppi.Value do
   def value?(%Tyyppi.Value{}), do: true
   def value?(_), do: false
 
-  @spec valid?(t()) :: boolean()
-  @doc false
-  def valid?(meta()) when meta.defined? == true, do: true
-  def valid?(_), do: false
-
   #############################################################################
 
   @type factory_option ::
           {:value, any()}
           | {:documentation, String.t()}
-          | {:type, Tyyppi.T.t()}
+          | {:type, Tyyppi.T.t(term())}
           | {:coercion, coercer()}
           | {:validation, validator()}
           | {:encoding, encoder()}
@@ -527,7 +531,9 @@ defmodule Tyyppi.Value do
       __context__: %{type: Tyyppi.parse(any())}
     }
 
-  @spec list(options :: Tyyppi.T.t() | [{:type, Tyyppi.T.t()} | factory_option()]) :: t()
+  @spec list(options :: Tyyppi.T.t(wrapped) | [{:type, Tyyppi.T.t(wrapped)} | factory_option()]) ::
+          t(wrapped)
+        when wrapped: term()
   @doc "Factory for `list` wrapped by `Tyyppi.Value`"
   def list(%Tyyppi.T{} = type), do: %Tyyppi.Value{list() | __context__: %{type: type}}
 
@@ -536,7 +542,7 @@ defmodule Tyyppi.Value do
     type |> list() |> put_options(options)
   end
 
-  @spec list(value :: list(), type :: Tyyppi.T.t()) :: t()
+  @spec list(value :: list(), type :: Tyyppi.T.t(wrapped)) :: t(wrapped) when wrapped: term()
   def list(value, %Tyyppi.T{} = type) when is_list(value), do: list(value: value, type: type)
 
   @spec struct() :: t()
@@ -575,6 +581,7 @@ defmodule Tyyppi.Value do
     result
   end
 
+  @spec optional(Value.t(wrapped)) :: Value.t(wrapped) when wrapped: term()
   def optional(%Value{__meta__: meta} = value) do
     type = Tyyppi.parse_quoted({:|, [], [nil, value.type.quoted]})
     generation = {&Generations.optional/1, value.generation}

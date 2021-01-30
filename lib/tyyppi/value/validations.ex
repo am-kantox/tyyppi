@@ -61,7 +61,7 @@ defmodule Tyyppi.Value.Validations do
         else: {:error, "Expected a value to be one of " <> inspect(allowed)}
       )
 
-  @spec list(list(), %{type: Tyyppi.T.t()}) :: Tyyppi.Value.either()
+  @spec list(list(), %{type: Tyyppi.T.t(wrapped)}) :: Tyyppi.Value.either() when wrapped: term()
   def list(list, %{type: type}) do
     case Enum.split_with(list, &Tyyppi.of_type?(type, &1)) do
       {list, []} ->

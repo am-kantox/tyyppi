@@ -75,25 +75,26 @@ defmodule Tyyppi.T do
   For remote types, it’s gathered from `Code.Typespec`, for built-in like `atom()`
     ot’s simply constructed on the fly.
   """
-  @type t :: %__MODULE__{
+  @type t(wrapped) :: %__MODULE__{
           type: visibility(),
           module: module(),
           name: atom(),
           params: [atom()],
           source: binary() | nil,
           definition: raw() | nil,
-          quoted: ast()
+          quoted: wrapped
         }
 
   defstruct ~w|type module name params source definition quoted|a
 
-  @spec loaded?(type :: T.t()) :: boolean()
+  @spec loaded?(type :: T.t(wrapped)) :: boolean() when wrapped: term()
   @doc "Returns `true` if the type definition was loaded, `false` otherwise."
   def loaded?(%T{definition: nil}), do: false
   def loaded?(%T{}), do: true
 
   @spec parse_quoted({:| | {:., keyword(), list()} | atom(), keyword(), list() | nil}) ::
-          Tyyppi.T.t()
+          Tyyppi.T.t(wrapped)
+        when wrapped: term()
   @doc false
   def parse_quoted({:|, _, [_, _]} = union) do
     union
@@ -189,6 +190,7 @@ defmodule Tyyppi.T do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
 
+    defp stringify({:var, _, name}), do: ~s|_#{name}|
     defp stringify({:type, _, type}), do: ~s|#{type}()|
 
     defp stringify({:type, _, type, params}) do

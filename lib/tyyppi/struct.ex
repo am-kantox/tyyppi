@@ -9,7 +9,7 @@ defmodule Tyyppi.Struct do
 
   ## Usage
 
-  See `Tyyppi.ExamplePlainStruct` for the example of why and how to use `Tyyppi.Struct`.
+  See `Tyyppi.Example.Struct` for the example of why and how to use `Tyyppi.Struct`.
 
   ### Example
 
@@ -47,27 +47,27 @@ defmodule Tyyppi.Struct do
     are first class citizens, defaults might be specified through `@defaults` module
     attribute. Omitted fields there will be considered having `nil` default value.
 
-      iex> %Tyyppi.ExamplePlainStruct{}
-      %Tyyppi.ExamplePlainStruct{
+      iex> %Tyyppi.Example.Struct{}
+      %Tyyppi.Example.Struct{
         bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}, foo: nil}
 
   ## Upserts
 
-      iex> {ex, pid} = {%Tyyppi.ExamplePlainStruct{}, :erlang.list_to_pid('<0.0.0>')}
-      iex> Tyyppi.ExamplePlainStruct.update(ex, foo: :foo, bar: {:ok, pid}, baz: :ok)
-      {:ok, %Tyyppi.ExamplePlainStruct{
+      iex> {ex, pid} = {%Tyyppi.Example.Struct{}, :erlang.list_to_pid('<0.0.0>')}
+      iex> Tyyppi.Example.Struct.update(ex, foo: :foo, bar: {:ok, pid}, baz: :ok)
+      {:ok, %Tyyppi.Example.Struct{
         bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
         baz: :ok,
         foo: :foo}}
-      iex> Tyyppi.ExamplePlainStruct.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
-      {:error, [baz: [type: [expected: "Tyyppi.ExamplePlainStruct.my_type()", got: 42]]]}
+      iex> Tyyppi.Example.Struct.update(ex, foo: :foo, bar: {:ok, pid}, baz: 42)
+      {:error, [baz: [type: [expected: "Tyyppi.Example.Struct.my_type()", got: 42]]]}
 
   ## `Access`
 
       iex> pid = :erlang.list_to_pid('<0.0.0>')
-      iex> ex = %Tyyppi.ExamplePlainStruct{foo: :foo, bar: {:ok, pid}, baz: :ok}
+      iex> ex = %Tyyppi.Example.Struct{foo: :foo, bar: {:ok, pid}, baz: :ok}
       iex> put_in(ex, [:foo], :foo_sna)
-      %Tyyppi.ExamplePlainStruct{
+      %Tyyppi.Example.Struct{
         bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
         baz: :ok,
         foo: :foo_sna}
@@ -213,9 +213,9 @@ defmodule Tyyppi.Struct do
 
       @doc ~s"""
       Returns the field types of this struct as keyword of
-        `{field :: atom, type :: Tyyppi.T.t()}` pairs.
+        `{field :: atom, type :: Tyyppi.T.t(term())}` pairs.
       """
-      @spec types :: [{atom(), T.t()}]
+      @spec types :: [{atom(), T.t(wrapped)}] when wrapped: term()
       def types do
         Enum.map(@quoted_types, fn
           {k, %T{definition: nil, quoted: quoted}} ->
@@ -352,7 +352,6 @@ defmodule Tyyppi.Struct do
                 _ ->
                   value = get_in(target, [field])
 
-                  # FIXME
                   if T.collectable?(value) and T.enumerable?(cast),
                     do: Enum.into(cast, value),
                     else: cast
@@ -405,7 +404,7 @@ defmodule Tyyppi.Struct do
       defp generation_clause(this, {field, arg}, acc) do
         {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :bind]}, [],
          [
-           {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Value]}, :generation]}, [],
+           {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Struct]}, :generation]}, [],
             [{{:., [], [this, field]}, [no_parens: true], []}]},
            {:fn, [], [{:->, [], [[arg], acc]}]}
          ]}
@@ -425,6 +424,7 @@ defmodule Tyyppi.Struct do
       @doc false
       @dialyzer {:nowarn_function, generation: 1}
       @spec generation(t()) :: Tyyppi.Value.generator()
+
       def generation(%__MODULE__{} = this) do
         this
         |> do_generation(@fields)
@@ -436,4 +436,7 @@ defmodule Tyyppi.Struct do
       defoverridable generation: 1
     end
   end
+
+  @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generator()
+  def generation(%type{} = value), do: type.generation(value)
 end

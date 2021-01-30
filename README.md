@@ -16,6 +16,7 @@ end
 
 ## Changelog
 
+- **`0.7.0`** — Generators + Collectable + Enumerable + Nested Structs
 - **`0.6.0`** — `Tyyppi.Value` for `Struct` + `Jason.Encoder` if `Jason` is presented + bugfixes
 - **`0.5.0`** — `Tyyppi.Value` + constructors + `~t||` sigil to produce `Tyyppi` types
 - **`0.4.0`** — per-field coercions and validations via `cast_field/1` and `validate_field/1`
