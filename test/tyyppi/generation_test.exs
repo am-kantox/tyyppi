@@ -8,7 +8,7 @@ defmodule Test.Tyyppi.Generation do
              %Nested{}
              |> Nested.generation()
              |> Stream.map(&Nested.validate/1)
-             |> Enum.take(100)
+             |> Enum.take(10)
              |> Keyword.keys()
              |> Enum.uniq()
   end

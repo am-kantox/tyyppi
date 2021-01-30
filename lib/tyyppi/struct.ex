@@ -405,9 +405,12 @@ defmodule Tyyppi.Struct do
 
         with %{result: update, errors: []} <- values,
              candidate = Map.merge(target, Map.new(update)),
-             {:ok, result} <- validate(candidate),
-             do: {:ok, result},
-             else: (%{errors: errors} -> {:error, errors})
+             {:ok, result} <- validate(candidate) do
+          {:ok, result}
+        else
+          %{errors: errors} -> {:error, errors}
+          {:error, errors} -> {:error, errors}
+        end
       end
     end
   end
