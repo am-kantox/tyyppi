@@ -184,7 +184,6 @@ defmodule Tyyppi.Value do
   def generation(%__MODULE__{generation: {g, params}}) when is_function(g, 1), do: g.(params)
   def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
   def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
-  def generation(mod), do: IO.inspect({mod.generation, mod}) && raise("")
 
   @spec value_type?(nil | Tyyppi.T.t(wrapped)) :: boolean() when wrapped: term()
   @doc false
