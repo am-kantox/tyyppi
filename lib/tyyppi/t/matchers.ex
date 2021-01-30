@@ -176,6 +176,15 @@ defmodule Tyyppi.Matchers do
 
   def of?(_module, type, {:type, _, :union, ts}), do: type in ts
 
+  def of?(_module, {:atom, _, nil}, {:type, _, type, type_def}) do
+    Logger.debug(
+      "[⚠️ Matchers.of?/3] dependent types are not yet supported: " <>
+        inspect({type, type_def})
+    )
+
+    true
+  end
+
   ###################### VARS #######################
 
   def of?(module, {:var, _, name}, term) do

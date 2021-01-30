@@ -404,7 +404,7 @@ defmodule Tyyppi.Struct do
       defp generation_clause(this, {field, arg}, acc) do
         {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :bind]}, [],
          [
-           {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Value]}, :generation]}, [],
+           {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Struct]}, :generation]}, [],
             [{{:., [], [this, field]}, [no_parens: true], []}]},
            {:fn, [], [{:->, [], [[arg], acc]}]}
          ]}
@@ -424,6 +424,7 @@ defmodule Tyyppi.Struct do
       @doc false
       @dialyzer {:nowarn_function, generation: 1}
       @spec generation(t()) :: Tyyppi.Value.generator()
+
       def generation(%__MODULE__{} = this) do
         this
         |> do_generation(@fields)
@@ -435,4 +436,7 @@ defmodule Tyyppi.Struct do
       defoverridable generation: 1
     end
   end
+
+  @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generator()
+  def generation(%type{} = value), do: type.generation(value)
 end
