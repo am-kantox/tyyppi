@@ -136,7 +136,7 @@ defmodule Tyyppi.Value do
   #############################################################################
   @doc false
   @spec validation(data :: t()) :: (value() -> either())
-  def validation(%__MODULE__{__meta__: %{optional?: true}, value: nil}), do: {:ok, nil}
+  def validation(%__MODULE__{__meta__: %{optional?: true}, value: nil}), do: &{:ok, &1}
 
   def validation(%__MODULE__{validation: f}) when is_function(f, 1), do: &f.(&1)
 
@@ -581,6 +581,7 @@ defmodule Tyyppi.Value do
     result
   end
 
+  @spec optional(Value.t(wrapped)) :: Value.t(wrapped) when wrapped: term()
   def optional(%Value{__meta__: meta} = value) do
     type = Tyyppi.parse_quoted({:|, [], [nil, value.type.quoted]})
     generation = {&Generations.optional/1, value.generation}

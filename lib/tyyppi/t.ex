@@ -190,6 +190,7 @@ defmodule Tyyppi.T do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
 
+    defp stringify({:var, _, name}), do: ~s|_#{name}|
     defp stringify({:type, _, type}), do: ~s|#{type}()|
 
     defp stringify({:type, _, type, params}) do

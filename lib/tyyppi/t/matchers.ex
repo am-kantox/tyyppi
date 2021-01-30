@@ -174,6 +174,8 @@ defmodule Tyyppi.Matchers do
   def of?(module, {:type, _, :union, ts}, term),
     do: Enum.any?(ts, &of?(module, &1, term))
 
+  def of?(_module, type, {:type, _, :union, ts}), do: type in ts
+
   ###################### VARS #######################
 
   def of?(module, {:var, _, name}, term) do

@@ -11,7 +11,7 @@ defmodule Tyyppi.ExamplePlainValueStruct do
   @defaults foo: Value.optional(Value.atom()),
             bar: Value.date_time(42),
             baz: Value.date_time(~U[1973-09-30 02:46:30Z])
-  defstruct foo: nil | Value.t(), bar: Value.t(), baz: Value.t()
+  defstruct foo: Value.t(atom() | nil), bar: Value.t(), baz: Value.t()
 
   defp cast_baz(true), do: DateTime.utc_now()
   defp cast_baz(value), do: value

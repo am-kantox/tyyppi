@@ -11,6 +11,6 @@ defmodule Tyyppi.ExampleNestedStruct do
   @type dt :: binary()
 
   @defaults date_time: Value.string("1973-09-30 02:30:00Z"),
-            struct: Value.struct(%Tyyppi.ExamplePlainStruct{})
-  defstruct date_time: DateTime.t(), struct: Tyyppi.ExamplePlainStruct.t()
+            struct: Value.struct(%Tyyppi.Example.Struct{})
+  defstruct date_time: DateTime.t(), struct: Tyyppi.Example.Struct.t()
 end
