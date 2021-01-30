@@ -174,6 +174,17 @@ defmodule Tyyppi.Matchers do
   def of?(module, {:type, _, :union, ts}, term),
     do: Enum.any?(ts, &of?(module, &1, term))
 
+  ###################### VARS #######################
+
+  def of?(module, {:var, _, name}, term) do
+    Logger.debug(
+      "[⚠️ Matchers.of?/3] dependent types are not yet supported: " <>
+        inspect({module, name, term})
+    )
+
+    true
+  end
+
   #################### SINK ALL #####################
 
   def of?(module, definition, term) do

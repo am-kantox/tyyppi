@@ -97,7 +97,7 @@ defmodule Tyyppi.MixProject do
         Examples: [
           Tyyppi.ExamplePlainStructValue,
           Tyyppi.ExamplePlainStruct,
-          Tyyppi.ExampleValue
+          Tyyppi.Example.Value
         ]
       ]
     ]

@@ -14,7 +14,7 @@ defmodule Tyyppi.Stats do
   use GenServer
 
   @typedoc "Types information cache"
-  @type info :: %{fun() => Tyyppi.T.t()}
+  @type info :: %{fun() => Tyyppi.T.t(term())}
 
   @typedoc """
   Function to be called upon rehashing. When arity is `0`, the full new state
@@ -46,7 +46,7 @@ defmodule Tyyppi.Stats do
     end
   end
 
-  @spec type(fun() | atom() | T.ast() | T.raw()) :: Tyyppi.T.t()
+  @spec type(fun() | atom() | T.ast() | T.raw()) :: Tyyppi.T.t(wrapped) when wrapped: term()
   @doc """
   Retrieves the type information for the type given.
   """
@@ -117,7 +117,8 @@ defmodule Tyyppi.Stats do
   def handle_call(:types, _from, state), do: {:reply, state.types, state}
 
   @spec type_to_map(module(), charlist(), {atom(), Tyyppi.T.ast()}) ::
-          {fun(), Tyyppi.T.t()}
+          {fun(), Tyyppi.T.t(wrapped)}
+        when wrapped: term()
   defp type_to_map(module, source, {type, {name, definition, params}}) do
     param_names = T.param_names(params)
 
@@ -189,7 +190,7 @@ defmodule Tyyppi.Stats do
   defp types_from_ets(_),
     do: :ets.foldl(fn {k, v}, acc -> Map.put(acc, k, v) end, %{}, __MODULE__)
 
-  @spec type_from_ets(:undefined | keyword(), fun()) :: Tyyppi.T.t()
+  @spec type_from_ets(:undefined | keyword(), fun()) :: Tyyppi.T.t(wrapped) when wrapped: term()
   defp type_from_ets(:undefined, key),
     do: :undefined |> types_from_ets() |> Map.get(key)
 

@@ -1,7 +1,8 @@
 defmodule Test.Tyyppi.StructValue do
   use ExUnit.Case
 
-  alias Tyyppi.{ExampleValue, Struct, Value}
+  alias Tyyppi.Example.Value, as: ExampleValue
+  alias Tyyppi.{Struct, Value}
 
   test "struct with all values" do
     ex = %ExampleValue{}
@@ -28,7 +29,7 @@ defmodule Test.Tyyppi.StructValue do
             ]} = Struct.update(ex, :bar, fn _ -> 101 end)
 
     assert_raise BadStructError,
-                 "expected a struct named Tyyppi.ExampleValue, got: :baz",
+                 "expected a struct named Tyyppi.Example.Value, got: :baz",
                  fn ->
                    put_in(ex, [:baz], 5)
                  end

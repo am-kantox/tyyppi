@@ -213,9 +213,9 @@ defmodule Tyyppi.Struct do
 
       @doc ~s"""
       Returns the field types of this struct as keyword of
-        `{field :: atom, type :: Tyyppi.T.t()}` pairs.
+        `{field :: atom, type :: Tyyppi.T.t(term())}` pairs.
       """
-      @spec types :: [{atom(), T.t()}]
+      @spec types :: [{atom(), T.t(wrapped)}] when wrapped: term()
       def types do
         Enum.map(@quoted_types, fn
           {k, %T{definition: nil, quoted: quoted}} ->

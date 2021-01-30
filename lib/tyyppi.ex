@@ -17,7 +17,7 @@ defmodule Tyyppi do
   defguard is_params(params) when is_list(params) or is_atom(params)
 
   @doc """
-  Sigil to simplify specification of `Tyyppi.T.t()` type, it’s literally the wrapper for `Tyyppi.parse/1`.
+  Sigil to simplify specification of `Tyyppi.T.t(term())` type, it’s literally the wrapper for `Tyyppi.parse/1`.
 
   ## Examples
       iex> import Tyyppi
@@ -219,10 +219,10 @@ defmodule Tyyppi do
     end
   end
 
-  @spec of_type?(Tyyppi.T.t(), any()) :: boolean()
+  @spec of_type?(Tyyppi.T.t(wrapped), any()) :: boolean() when wrapped: term()
   @doc """
   Returns `true` if the `term` passed as the second parameter is of type `type`.
-    The first parameter is expected to be of type `Tyyppi.T.t()`.
+    The first parameter is expected to be of type `Tyyppi.T.t(term())`.
 
   _Examples:_
 
@@ -345,24 +345,18 @@ defmodule Tyyppi do
         else: quote(do: require(Tyyppi))
       ),
       quote do
-        alias Tyyppi.Value
-
         import Kernel, except: [defstruct: 1]
         import Tyyppi.Struct, only: [defstruct: 1]
 
-        :ok
+        alias Tyyppi.Value
       end
     ]
   end
 
   @doc false
   defmacro __using__(opts \\ []) do
-    start? =
-      if Keyword.get(opts, :start, false), do: quote(do: Tyyppi.Stats.start_link()), else: []
-
     import? = Keyword.get(opts, :import, false)
-
-    [setup_ast(import?), start?]
+    setup_ast(import?)
   end
 
   @doc false
