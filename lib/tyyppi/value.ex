@@ -125,8 +125,14 @@ defmodule Tyyppi.Value do
   @doc false
   def get_and_update(%__MODULE__{value: value} = data, :value, fun) do
     case fun.(value) do
-      :pop -> pop(data, :value)
-      {get_value, update_value} -> {get_value, validate(data, update_value)}
+      :pop ->
+        pop(data, :value)
+
+      {get_value, update_value} ->
+        case validate(data, update_value) do
+          {:ok, update_value} -> {get_value, update_value}
+          {:error, error} -> raise ArgumentError, message: inspect(error)
+        end
     end
   end
 
@@ -146,15 +152,14 @@ defmodule Tyyppi.Value do
   def validation(%__MODULE__{}), do: &{:ok, &1}
 
   @doc false
-  @spec validate(t()) :: t()
+  @spec validate(t()) :: {:ok, t()} | {:error, term()}
   def validate(%__MODULE__{value: value} = data), do: validate(data, value)
 
   def validate(%__MODULE__{__meta__: %{optional?: true} = meta} = data, nil) do
     if Tyyppi.of_type?(data.type, nil) do
-      %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}
+      {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
     else
-      errors = [type: [expected: to_string(data.type), got: nil]]
-      %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+      {:error, [type: [expected: to_string(data.type), got: nil]]}
     end
   end
 
@@ -162,15 +167,13 @@ defmodule Tyyppi.Value do
     with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(value)},
          true <- Tyyppi.of_type?(data.type, cast),
          {:validation, {:ok, value}} <- {:validation, validation(data).(cast)} do
-      %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: value}
+      {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: value}}
     else
       false ->
-        errors = [type: [expected: to_string(data.type), got: value]]
-        %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+        {:error, [type: [expected: to_string(data.type), got: value]]}
 
       {operation, {:error, error}} ->
-        errors = [{operation, [message: error, got: value]}]
-        %__MODULE__{data | __meta__: %{meta | defined?: false, errors: errors}}
+        {:error, [{operation, [message: error, got: value]}]}
     end
   end
 

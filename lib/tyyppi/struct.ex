@@ -247,7 +247,19 @@ defmodule Tyyppi.Struct do
       It would be called after all casts and type validations, if the succeeded
       """
       @spec validate(t()) :: {:ok, t()} | {:error, term()}
-      def validate(%__MODULE__{} = t), do: {:ok, t}
+      def validate(%__MODULE__{} = s) do
+        s
+        |> Enum.reduce({s, []}, fn {key, %type{} = value}, {%__MODULE__{} = acc, errors} ->
+          case type.validate(value) do
+            {:ok, value} -> {Map.put(acc, key, value), errors}
+            {:error, error} -> {acc, [error | errors]}
+          end
+        end)
+        |> case do
+          {validated, []} -> {:ok, validated}
+          {_, errors} -> {:error, errors}
+        end
+      end
 
       defoverridable validate: 1
     end
@@ -439,4 +451,7 @@ defmodule Tyyppi.Struct do
 
   @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generator()
   def generation(%type{} = value), do: type.generation(value)
+
+  @spec validate(s) :: {:ok, s} | {:error, term()} when s: struct()
+  def validate(%type{} = s), do: type.validate(s)
 end
