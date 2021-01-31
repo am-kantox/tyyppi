@@ -104,7 +104,6 @@ defmodule Tyyppi.MixProject do
 
   defp elixirc_paths(:dev), do: ["lib", "test/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(:ci), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp compilers(:prod), do: Mix.compilers()

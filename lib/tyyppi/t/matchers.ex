@@ -196,6 +196,17 @@ defmodule Tyyppi.Matchers do
     true
   end
 
+  #################### LOCALS #######################
+
+  # def of?(nil, {:type, _, name, params}, term) do
+  #   Logger.debug(
+  #     "[⚠️ Matchers.of?/3] local types are not yet supported: " <>
+  #       inspect({{name, params}, term})
+  #   )
+
+  #   true
+  # end
+
   #################### SINK ALL #####################
 
   def of?(module, definition, term) do
