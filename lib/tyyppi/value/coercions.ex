@@ -1,10 +1,10 @@
 defmodule Tyyppi.Value.Coercions do
   @moduledoc false
 
-  @spec any(any()) :: Tyyppi.Value.either()
+  @spec any(any()) :: Tyyppi.Valuable.either()
   def any(value), do: {:ok, value}
 
-  @spec atom(value :: any()) :: Tyyppi.Value.either()
+  @spec atom(value :: any()) :: Tyyppi.Valuable.either()
   def atom(atom) when is_atom(atom), do: {:ok, atom}
   def atom(binary) when is_binary(binary), do: {:ok, String.to_atom(binary)}
   def atom(charlist) when is_list(charlist), do: {:ok, :erlang.list_to_atom(charlist)}
@@ -12,7 +12,7 @@ defmodule Tyyppi.Value.Coercions do
   def atom(_not_atom),
     do: {:error, "Expected atom(), charlist() or binary()"}
 
-  @spec string(value :: any()) :: Tyyppi.Value.either()
+  @spec string(value :: any()) :: Tyyppi.Valuable.either()
   def string(value) do
     case String.Chars.impl_for(value) do
       nil -> {:error, "protocol String.Chars must be implemented for the target"}
@@ -20,12 +20,12 @@ defmodule Tyyppi.Value.Coercions do
     end
   end
 
-  @spec boolean(value :: any()) :: Tyyppi.Value.either()
+  @spec boolean(value :: any()) :: Tyyppi.Valuable.either()
   def boolean(bool) when is_boolean(bool), do: {:ok, bool}
   def boolean(nil), do: {:ok, false}
   def boolean(_not_nil), do: {:ok, true}
 
-  @spec integer(value :: any()) :: Tyyppi.Value.either()
+  @spec integer(value :: any()) :: Tyyppi.Valuable.either()
   def integer(i) when is_integer(i), do: {:ok, i}
   def integer(n) when is_number(n), do: {:ok, round(n)}
 
@@ -40,7 +40,7 @@ defmodule Tyyppi.Value.Coercions do
   def integer(_not_integer),
     do: {:error, "Expected number() or binary()"}
 
-  @spec date_time(value :: any()) :: Tyyppi.Value.either()
+  @spec date_time(value :: any()) :: Tyyppi.Valuable.either()
   def date_time(%DateTime{} = dt), do: {:ok, dt}
 
   def date_time(value) when is_binary(value) do
@@ -65,7 +65,7 @@ defmodule Tyyppi.Value.Coercions do
 
   def date_time(_), do: {:error, "Expected DateTime() or binary() or integer()."}
 
-  @spec timeout(value :: any()) :: Tyyppi.Value.either()
+  @spec timeout(value :: any()) :: Tyyppi.Valuable.either()
   def timeout(:infinity), do: {:ok, :infinity}
 
   def timeout(value) do
@@ -75,7 +75,7 @@ defmodule Tyyppi.Value.Coercions do
     end
   end
 
-  @spec pid(value :: any()) :: Tyyppi.Value.either()
+  @spec pid(value :: any()) :: Tyyppi.Valuable.either()
   def pid(pid) when is_pid(pid), do: {:ok, pid}
   def pid("#PID" <> maybe_pid), do: pid(maybe_pid)
   def pid([_, _, _] = list), do: list |> Enum.join(".") |> pid()
@@ -85,7 +85,7 @@ defmodule Tyyppi.Value.Coercions do
 
   def pid(_value), do: {:error, "Expected a value that can be converted to pid()"}
 
-  @spec mfa(value :: any()) :: Tyyppi.Value.either()
+  @spec mfa(value :: any()) :: Tyyppi.Valuable.either()
   def mfa(fun) when is_function(fun) do
     info = Function.info(fun)
 
