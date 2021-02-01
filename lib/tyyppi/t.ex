@@ -72,8 +72,9 @@ defmodule Tyyppi.T do
   @typedoc """
   The type information in a human-readable format.
 
-  For remote types, it’s gathered from `Code.Typespec`, for built-in like `atom()`
-    ot’s simply constructed on the fly.
+  For remote types, it’s gathered from
+    [`Code.Typespec`](https://github.com/elixir-lang/elixir/blob/master/lib/elixir/lib/code/typespec.ex#L1),
+    for built-in like `atom()` it’s simply constructed on the fly.
   """
   @type t(wrapped) :: %__MODULE__{
           type: visibility(),

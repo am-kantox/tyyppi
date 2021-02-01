@@ -206,8 +206,13 @@ defmodule Tyyppi.Struct do
 
       @typedoc ~s"""
       The type describing this struct. This type will be used to validate
-        upserts when called via `Access` and/or `#{inspect(__MODULE__)}.put/3`,
-        `#{inspect(__MODULE__)}.update/4`.
+        upserts when called via `Access` and/or `Tyyppi.Struct.put/3`,
+        `Tyyppi.Struct.update/3`, both delegating to generated
+        `#{inspect(__MODULE__)}.update/3`.
+
+      Upon insertion, the value will be coerced to the expected type
+        when available, the type itself will be validated, and then the
+        custom validation will be applied when applicable.
       """
       @type t :: %{unquote_splicing(struct_typespec)}
 
@@ -446,7 +451,7 @@ defmodule Tyyppi.Struct do
 
       @doc false
       @dialyzer {:nowarn_function, generation: 1}
-      @spec generation(t()) :: Tyyppi.Value.generator()
+      @spec generation(t()) :: Tyyppi.Value.generation()
 
       def generation(%__MODULE__{} = this) do
         this
@@ -460,7 +465,7 @@ defmodule Tyyppi.Struct do
     end
   end
 
-  @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generator()
+  @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generation()
   def generation(%type{} = value), do: type.generation(value)
 
   @spec validate(s) :: {:ok, s} | {:error, term()} when s: struct()

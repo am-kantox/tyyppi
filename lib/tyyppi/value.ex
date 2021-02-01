@@ -43,12 +43,15 @@ defmodule Tyyppi.Value do
   @typedoc "Type of the encoder function, that might be used for e. g. Json serialization"
   @type encoder :: (value(), keyword() -> binary()) | nil
 
-  @typedoc "Type of the generator function, producing the stream of `value()`"
+  @typedoc "Type of the generation function, basically returning a stream of generated values"
   if Code.ensure_loaded?(StreamData) do
-    @type generator :: (() -> StreamData.t(value())) | (any() -> StreamData.t(value()))
+    @type generation :: StreamData.t(value())
   else
-    @type generator :: (() -> Enumerable.t()) | (any() -> Enumerable.t())
+    @type generation :: Enumerable.t()
   end
+
+  @typedoc "Type of the generator function, producing the stream of `value()`"
+  @type generator :: (() -> generation()) | (any() -> generation())
 
   @typedoc "Type of the validation function allowed"
   @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())

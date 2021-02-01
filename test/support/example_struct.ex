@@ -12,7 +12,31 @@ defmodule Tyyppi.Example.Struct do
 
   @defaults bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}
   defstruct foo: nil | atom(), bar: GenServer.on_start(), baz: my_type()
+
+  defp cast_baz(true), do: :ok
+  defp cast_baz(false), do: {:error, false}
+  defp cast_baz(value), do: value
   ```
+
+  ## Usage examples
+
+      iex> put_in(%Tyyppi.Example.Struct{}, [:foo], :ok)
+      %Tyyppi.Example.Struct{
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
+        baz: {:error, :reason},
+        foo: :ok}
+      iex> put_in(%Tyyppi.Example.Struct{}, [:foo], 42)
+      ** (ArgumentError) could not put/update key :foo with value 42 ([foo: [type: [expected: "atom()", got: 42]]])
+      iex> put_in(%Tyyppi.Example.Struct{}, [:baz], true)
+      %Tyyppi.Example.Struct{
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
+        baz: :ok,
+        foo: nil}
+      iex> put_in(%Tyyppi.Example.Struct{}, [:baz], false)
+      %Tyyppi.Example.Struct{
+        bar: {:ok, :erlang.list_to_pid('<0.0.0>')},
+        baz: {:error, false},
+        foo: nil}
   """
   use Tyyppi
 

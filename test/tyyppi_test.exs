@@ -1,5 +1,6 @@
 defmodule Test.Tyyppi do
   use ExUnit.Case
   doctest Tyyppi
-  require Logger
+  ## Examples
+  doctest Tyyppi.Example.Struct
 end
