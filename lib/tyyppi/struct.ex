@@ -75,7 +75,10 @@ defmodule Tyyppi.Struct do
       ** (ArgumentError) could not put/update key :foo with value 42 ([foo: [type: [expected: \"atom()\", got: 42]]])
 
   """
-  @doc false
+  @doc """
+  Declares a typed struct. The accepted argument is the keyword of
+  `{field_name, type}` tuples. See `Tyyppi.Example.Struct` for an example.
+  """
   defmacro defstruct(definition) when is_list(definition) do
     typespec = typespec(definition, __CALLER__)
     struct_typespec = [{:__struct__, {:__MODULE__, [], Elixir}} | typespec]
@@ -208,7 +211,7 @@ defmodule Tyyppi.Struct do
       The type describing this struct. This type will be used to validate
         upserts when called via `Access` and/or `Tyyppi.Struct.put/3`,
         `Tyyppi.Struct.update/3`, both delegating to generated
-        `#{inspect(__MODULE__)}.update/3`.
+        `#{inspect(__MODULE__)}.update/2`.
 
       Upon insertion, the value will be coerced to the expected type
         when available, the type itself will be validated, and then the
@@ -465,9 +468,17 @@ defmodule Tyyppi.Struct do
     end
   end
 
-  @spec generation(%{__struct__: atom(), generation: function()}) :: Tyyppi.Value.generation()
-  def generation(%type{} = value), do: type.generation(value)
+  ##############################################################################
 
-  @spec validate(s) :: {:ok, s} | {:error, term()} when s: struct()
+  @behaviour Tyyppi.Valuable
+
+  @impl Tyyppi.Valuable
+  # FIXME
+  def coerce(%_type{} = s), do: {:ok, s}
+
+  @impl Tyyppi.Valuable
   def validate(%type{} = s), do: type.validate(s)
+
+  @impl Tyyppi.Valuable
+  def generation(%type{} = value), do: type.generation(value)
 end

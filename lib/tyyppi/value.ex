@@ -31,34 +31,26 @@ defmodule Tyyppi.Value do
   alias Tyyppi.Value
   alias Tyyppi.Value.{Coercions, Encodings, Generations, Validations}
 
-  @typedoc "Type of the value behind this struct"
-  @type value :: any()
-
-  @typedoc "Type returned from coercions and validations, typical pair of ok/error tuples"
-  @type either :: {:ok, value()} | {:error, any()}
-
   @typedoc "Type of the coercion function allowed"
-  @type coercer :: (value() -> either())
+  @type coercer :: (Tyyppi.Valuable.value() -> Tyyppi.Valuable.either())
 
   @typedoc "Type of the encoder function, that might be used for e. g. Json serialization"
-  @type encoder :: (value(), keyword() -> binary()) | nil
-
-  @typedoc "Type of the generation function, basically returning a stream of generated values"
-  if Code.ensure_loaded?(StreamData) do
-    @type generation :: StreamData.t(value())
-  else
-    @type generation :: Enumerable.t()
-  end
-
-  @typedoc "Type of the generator function, producing the stream of `value()`"
-  @type generator :: (() -> generation()) | (any() -> generation())
+  @type encoder :: (Tyyppi.Valuable.value(), keyword() -> binary()) | nil
 
   @typedoc "Type of the validation function allowed"
-  @type validator :: (value() -> either()) | (value(), %{required(atom()) => any()} -> either())
+  @type validator ::
+          (Tyyppi.Valuable.value() -> Tyyppi.Valuable.either())
+          | (Tyyppi.Valuable.value(), %{required(atom()) => any()} -> Tyyppi.Valuable.either())
+
+  @typedoc """
+  Type of the generator function, producing the stream of `value()`
+  """
+  @type generator ::
+          (() -> Tyyppi.Valuable.generation()) | (any() -> Tyyppi.Valuable.generation())
 
   @type t(wrapped) :: %{
           __struct__: Tyyppi.Value,
-          value: value(),
+          value: Tyyppi.Valuable.value(),
           documentation: String.t(),
           type: Tyyppi.T.t(wrapped),
           coercion: coercer(),
@@ -149,7 +141,7 @@ defmodule Tyyppi.Value do
 
   #############################################################################
   @doc false
-  @spec validation(data :: t()) :: (value() -> either())
+  @spec validation(data :: t()) :: (Tyyppi.Valuable.value() -> Tyyppi.Valuable.either())
   def validation(%__MODULE__{__meta__: %{optional?: true}, value: nil}), do: &{:ok, &1}
 
   def validation(%__MODULE__{validation: f}) when is_function(f, 1), do: &f.(&1)
@@ -160,9 +152,24 @@ defmodule Tyyppi.Value do
   def validation(%__MODULE__{}), do: &{:ok, &1}
 
   @doc false
-  @spec validate(t()) :: {:ok, t()} | {:error, term()}
-  def validate(%__MODULE__{value: value} = data), do: validate(data, value)
+  @spec valid?(t()) :: boolean()
+  def valid?(meta()) when meta.defined? == true, do: true
+  def valid?(_), do: false
 
+  @spec value_type?(nil | Tyyppi.T.t(wrapped)) :: boolean() when wrapped: term()
+  @doc false
+  def value_type?(%Tyyppi.T{module: Tyyppi.Value, name: :t}), do: true
+  def value_type?(_), do: false
+
+  @doc "Helper guard to match Value instances"
+  defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
+
+  @spec value?(any()) :: boolean()
+  @doc false
+  def value?(%Tyyppi.Value{}), do: true
+  def value?(_), do: false
+
+  @spec validate(data :: t(), any()) :: Tyyppi.Valuable.either()
   def validate(%__MODULE__{__meta__: %{optional?: true} = meta} = data, nil) do
     if Tyyppi.of_type?(data.type, nil) do
       {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
@@ -185,32 +192,22 @@ defmodule Tyyppi.Value do
     end
   end
 
-  @doc false
-  @spec valid?(t()) :: boolean()
-  def valid?(meta()) when meta.defined? == true, do: true
-  def valid?(_), do: false
+  ##############################################################################
 
-  @doc false
-  @spec generation(t()) :: generator()
+  @behaviour Tyyppi.Valuable
+
+  @impl Tyyppi.Valuable
   def generation(%__MODULE__{generation: {g, params}}) when is_function(g, 1), do: g.(params)
   def generation(%__MODULE__{generation: g} = data) when is_function(g, 1), do: g.(data)
   def generation(%__MODULE__{generation: g}) when is_function(g, 0), do: g.()
 
-  @spec value_type?(nil | Tyyppi.T.t(wrapped)) :: boolean() when wrapped: term()
-  @doc false
-  def value_type?(%Tyyppi.T{module: Tyyppi.Value, name: :t}), do: true
-  def value_type?(_), do: false
+  @impl Tyyppi.Valuable
+  def validate(%__MODULE__{value: value} = data), do: validate(data, value)
 
-  @doc "Helper guard to match Value instances"
-  defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
+  @impl Tyyppi.Valuable
+  def coerce(%__MODULE__{value: value} = data), do: data.coercion.(value)
 
-  @spec value?(any()) :: boolean()
-  @doc false
-  def value?(%Tyyppi.Value{}), do: true
-  def value?(_), do: false
-
-  #############################################################################
-
+  ##############################################################################
   @type factory_option ::
           {:value, any()}
           | {:documentation, String.t()}

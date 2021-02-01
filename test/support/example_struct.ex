@@ -43,11 +43,14 @@ defmodule Tyyppi.Example.Struct do
   @typedoc "The user type defined before `defstruct/1` declaration"
   @type my_type :: :ok | {:error, term()}
 
-  @typedoc "The user type exported"
+  @typedoc false
   @type my_map_1 :: %{foo: atom()}
+  @typedoc false
   @type my_map_2 :: %{required(atom()) => integer()}
+  @typedoc false
   @type my_map_3 :: %{optional(binary()) => my_type()}
 
+  @typedoc false
   @type my_struct :: %DateTime{}
 
   @defaults bar: {:ok, :erlang.list_to_pid('<0.0.0>')}, baz: {:error, :reason}
