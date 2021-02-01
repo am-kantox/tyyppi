@@ -254,7 +254,7 @@ defmodule Tyyppi.Struct do
 
       It would be called after all casts and type validations, if the succeeded
       """
-      @spec validate(t()) :: {:ok, t()} | {:error, term()}
+      @spec validate(t()) :: Tyyppi.Valuable.either()
       def validate(%__MODULE__{} = s) do
         s
         |> Enum.reduce({s, []}, fn
