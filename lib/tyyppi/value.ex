@@ -92,7 +92,7 @@ defmodule Tyyppi.Value do
   @doc false
   def fetch(defined(), :value), do: {:ok, value}
   def fetch(%__MODULE__{}, :value), do: :error
-  def fetch(meta(), :errors) when meta.errors == [], do: :error
+  def fetch(%__MODULE__{__meta__: %{errors: []}}, :errors), do: :error
   def fetch(meta(), :errors), do: {:ok, meta.errors}
 
   def fetch(%__MODULE__{documentation: <<_::8, _::binary()>> = documentation}, :documentation),
