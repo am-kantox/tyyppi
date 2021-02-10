@@ -153,7 +153,7 @@ defmodule Tyyppi.Value do
 
   @doc false
   @spec valid?(t()) :: boolean()
-  def valid?(meta()) when meta.defined? == true, do: true
+  def valid?(meta()), do: meta.defined?
   def valid?(_), do: false
 
   @spec value_type?(nil | Tyyppi.T.t(wrapped)) :: boolean() when wrapped: term()
