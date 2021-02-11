@@ -161,8 +161,10 @@ defmodule Tyyppi.Value do
   def value_type?(%Tyyppi.T{module: Tyyppi.Value, name: :t}), do: true
   def value_type?(_), do: false
 
-  @doc "Helper guard to match Value instances"
-  defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
+  if String.to_integer(System.otp_release()) > 22 do
+    @doc "Helper guard to match Value instances"
+    defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
+  end
 
   @spec value?(any()) :: boolean()
   @doc false
