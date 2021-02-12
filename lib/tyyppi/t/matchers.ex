@@ -56,6 +56,7 @@ defmodule Tyyppi.Matchers do
              {:type, 0, :map_field_assoc, [{:type, 0, :atom, []}, {:type, 0, :any, []}]}
            ]}
   def of?(x, {:type, _, :struct, []}, term), do: of?(x, @struct, term)
+
   # FIXME def of?(_, {:type, _, :bitstring, [t]}, term), do: of?(x, {:type, z, t, []}, term)
 
   ##################### LISTS #######################

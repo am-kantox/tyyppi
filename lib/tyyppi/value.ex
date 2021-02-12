@@ -28,6 +28,8 @@ defmodule Tyyppi.Value do
   require Logger
   require Tyyppi
 
+  Tyyppi.formulae_guard()
+
   alias Tyyppi.Value
   alias Tyyppi.Value.{Coercions, Encodings, Generations, Validations}
 
@@ -160,11 +162,6 @@ defmodule Tyyppi.Value do
   @doc false
   def value_type?(%Tyyppi.T{module: Tyyppi.Value, name: :t}), do: true
   def value_type?(_), do: false
-
-  if String.to_integer(System.otp_release()) > 22 do
-    @doc "Helper guard to match Value instances"
-    defguard is_value(value) when is_map(value) and value.__struct__ == Tyyppi.Value
-  end
 
   @spec value?(any()) :: boolean()
   @doc false
@@ -508,9 +505,8 @@ defmodule Tyyppi.Value do
                 Formulae.t() | binary() | [{:formulae, any()} | factory_option()]
             ) ::
               t()
-      def formulae(formulae)
-          when is_binary(formulae) or (is_map(formulae) and formulae.__struct__ == Formulae),
-          do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
+      def formulae(formulae) when is_binary(formulae) or is_formulae(formulae),
+        do: %Tyyppi.Value{formulae() | __context__: %{formulae: Formulae.compile(formulae)}}
 
     _ ->
       @spec formulae(

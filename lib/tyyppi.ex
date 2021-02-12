@@ -71,30 +71,19 @@ defmodule Tyyppi do
   _Example:_
 
       iex> require Tyyppi
-      ...> Tyyppi.parse(GenServer.on_start()) |> Map.put(:source, nil)
-      %Tyyppi.T{
-        definition: {:type, 704, :union,
-        [
-          {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 704, :pid, []}]},
-          {:atom, 0, :ignore},
-          {:type, 0, :tuple,
-            [
-              {:atom, 0, :error},
-              {:type, 704, :union,
-              [
-                {:type, 0, :tuple,
-                  [{:atom, 0, :already_started}, {:type, 704, :pid, []}]},
-                {:type, 704, :term, []}
-              ]}
-            ]}
-        ]},
-        module: GenServer,
-        name: :on_start,
-        params: [],
-        source: nil,
-        quoted: {{:., [], [GenServer, :on_start]}, [], []},
-        type: :type
-      }
+      ...> parsed = Tyyppi.parse(GenServer.on_start())
+      ...> with %Tyyppi.T{definition: {:type, _, :union, [type | _]}} <- parsed, do: type
+      {:type, 0, :tuple, [{:atom, 0, :ok}, {:type, 704, :pid, []}]}
+      ...> parsed.module
+      GenServer
+      ...> parsed.name
+      :on_start
+      ...> parsed.params
+      []
+      ...> parsed.quoted
+      {{:., [], [GenServer, :on_start]}, [], []}
+      ...> parsed.type
+      :type
   """
   defmacro parse({:|, _, [_, _]} = type) do
     quote bind_quoted: [union: Macro.escape(type)] do
@@ -354,9 +343,43 @@ defmodule Tyyppi do
   end
 
   @doc false
+  defp can_struct_guard? do
+    String.to_integer(System.otp_release()) > 22 and
+      Version.compare(System.version(), "1.11.0") != :lt
+  end
+
+  @doc false
+  def maybe_struct_guard(name \\ nil, struct) do
+    name =
+      if is_nil(name),
+        do: struct |> Module.split() |> List.last() |> Macro.underscore(),
+        else: name
+
+    name = :"is_#{name}"
+
+    if can_struct_guard?() do
+      quote do
+        @doc "Helper guard to match instances of struct #{inspect(unquote(struct))}"
+        defguard unquote(name)(value)
+                 when is_map(value) and value.__struct__ == unquote(struct)
+      end
+    else
+      quote do
+        @doc """
+        Stub guard to match instances of struct #{inspect(unquote(struct))}. Upgrade to 11.0/23 to make it work.
+        """
+        defguard unquote(name)(value) when is_map(value)
+      end
+    end
+  end
+
+  @doc false
+  defmacro formulae_guard, do: maybe_struct_guard(Formulae)
+
+  @doc false
   defmacro __using__(opts \\ []) do
     import? = Keyword.get(opts, :import, false)
-    setup_ast(import?)
+    [maybe_struct_guard(Tyyppi.Value) | setup_ast(import?)]
   end
 
   @doc false
