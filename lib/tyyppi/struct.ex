@@ -36,7 +36,12 @@ defmodule Tyyppi.Struct do
         module: Test.Tyyppi.Struct.MyStruct,
         name: :my_type,
         params: [],
-        quoted: {{:., [], [Test.Tyyppi.Struct.MyStruct, :my_type]}, [], []},
+        quoted: {
+          {:., [{:generated, true}, {:keep, {"lib/tyyppi/struct.ex", 116}}],
+               [Test.Tyyppi.Struct.MyStruct, :my_type]},
+          [{:generated, true}, {:keep, {"lib/tyyppi/struct.ex", 116}}],
+          []
+        },
         source: :user_type,
         type: :type
       }
@@ -84,7 +89,9 @@ defmodule Tyyppi.Struct do
     struct_typespec = [{:__struct__, {:__MODULE__, [], Elixir}} | typespec]
 
     quoted_types =
-      quote bind_quoted: [definition: Macro.escape(definition)] do
+      quote generated: true,
+            location: :keep,
+            bind_quoted: [definition: Macro.escape(definition)] do
         # FIXME Private types
         user_type = fn {type, _, _} ->
           __MODULE__
@@ -201,7 +208,7 @@ defmodule Tyyppi.Struct do
 
   #############################################################################
   defp do_declaration(quoted_types, struct_typespec) do
-    quote location: :keep do
+    quote generated: true, location: :keep do
       alias Tyyppi.Struct
 
       @quoted_types unquote(quoted_types)
@@ -247,7 +254,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_validation do
-    quote location: :keep do
+    quote generated: true, location: :keep do
       @doc """
       This function is supposed to be overwritten in the implementation in cases
         when custom validation is required.
@@ -282,7 +289,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_collectable do
-    quote location: :keep, unquote: false do
+    quote generated: true, location: :keep, unquote: false do
       fields = @fields
 
       defimpl Collectable do
@@ -302,7 +309,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_enumerable do
-    quote location: :keep, unquote: false do
+    quote generated: true, location: :keep, unquote: false do
       fields = @fields
       count = length(fields)
 
@@ -334,7 +341,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_casts_and_validates do
-    quote location: :keep, unquote: false do
+    quote generated: true, location: :keep, unquote: false do
       funs =
         Enum.flat_map(@fields, fn field ->
           @doc false
@@ -360,7 +367,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_update do
-    quote location: :keep, unquote: false do
+    quote generated: true, location: :keep, unquote: false do
       @doc """
       Updates the struct
       """
@@ -424,7 +431,7 @@ defmodule Tyyppi.Struct do
   end
 
   defp do_generation do
-    quote location: :keep, unquote: false do
+    quote generated: true, location: :keep, unquote: false do
       @dialyzer {:nowarn_function, generation_leaf: 1}
       defp generation_leaf(args),
         do:

@@ -330,10 +330,10 @@ defmodule Tyyppi do
   def setup_ast(import?) do
     [
       if(import?,
-        do: quote(do: import(Tyyppi)),
-        else: quote(do: require(Tyyppi))
+        do: quote(generated: true, do: import(Tyyppi)),
+        else: quote(generated: true, do: require(Tyyppi))
       ),
-      quote do
+      quote generated: true, location: :keep do
         import Kernel, except: [defstruct: 1]
         import Tyyppi.Struct, only: [defstruct: 1]
 
@@ -358,15 +358,16 @@ defmodule Tyyppi do
     name = :"is_#{name}"
 
     if can_struct_guard?() do
-      quote do
+      quote generated: true, location: :keep do
         @doc "Helper guard to match instances of struct #{inspect(unquote(struct))}"
         defguard unquote(name)(value)
                  when is_map(value) and value.__struct__ == unquote(struct)
       end
     else
-      quote do
+      quote generated: true, location: :keep do
         @doc """
-        Stub guard to match instances of struct #{inspect(unquote(struct))}. Upgrade to 11.0/23 to make it work.
+        Stub guard to match instances of struct #{inspect(unquote(struct))}.
+        Upgrade to 11.0/23 to make it work.
         """
         defguard unquote(name)(value) when is_map(value)
       end
@@ -379,7 +380,14 @@ defmodule Tyyppi do
   @doc false
   defmacro __using__(opts \\ []) do
     import? = Keyword.get(opts, :import, false)
-    [maybe_struct_guard(Tyyppi.Value) | setup_ast(import?)]
+
+    guards =
+      case __CALLER__.context_modules do
+        [] -> []
+        [_some | _] -> [maybe_struct_guard(Tyyppi.Value)]
+      end
+
+    guards ++ setup_ast(import?)
   end
 
   @doc false
