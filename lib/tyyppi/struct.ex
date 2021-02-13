@@ -36,12 +36,7 @@ defmodule Tyyppi.Struct do
         module: Test.Tyyppi.Struct.MyStruct,
         name: :my_type,
         params: [],
-        quoted: {
-          {:., [{:generated, true}, {:keep, {"lib/tyyppi/struct.ex", 116}}],
-               [Test.Tyyppi.Struct.MyStruct, :my_type]},
-          [{:generated, true}, {:keep, {"lib/tyyppi/struct.ex", 116}}],
-          []
-        },
+        quoted: {{:., [], [Test.Tyyppi.Struct.MyStruct, :my_type]}, [], []},
         source: :user_type,
         type: :type
       }
@@ -89,9 +84,7 @@ defmodule Tyyppi.Struct do
     struct_typespec = [{:__struct__, {:__MODULE__, [], Elixir}} | typespec]
 
     quoted_types =
-      quote generated: true,
-            location: :keep,
-            bind_quoted: [definition: Macro.escape(definition)] do
+      quote bind_quoted: [definition: Macro.escape(definition)] do
         # FIXME Private types
         user_type = fn {type, _, _} ->
           __MODULE__
