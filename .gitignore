@@ -10,4 +10,4 @@ tyyppi-*.tar
 /.dialyzer/*.plt*
 .mix_tasks
 config/.telemetria.config.json
-
+.tool-versions
