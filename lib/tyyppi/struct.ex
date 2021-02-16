@@ -123,14 +123,11 @@ defmodule Tyyppi.Struct do
     casts_and_validates = do_casts_and_validates()
     update = do_update()
 
-    generation =
-      if Code.ensure_loaded?(StreamData),
-        do: do_generation(),
-        else: []
+    generation = do_generation()
 
     jason =
       if Code.ensure_loaded?(Jason.Encoder),
-        do: [quote(do: @derive(Jason.Encoder))],
+        do: quote(do: @derive(Jason.Encoder)),
         else: []
 
     [
@@ -425,15 +422,15 @@ defmodule Tyyppi.Struct do
 
   defp do_generation do
     quote generated: true, location: :keep, unquote: false do
+      defp prop_test, do: quote(do: unquote(Tyyppi.Value.Generations.prop_test()))
+
       @dialyzer {:nowarn_function, generation_leaf: 1}
       defp generation_leaf(args),
-        do:
-          {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :constant]}, [],
-           [{:{}, [], args}]}
+        do: {{:., [], [prop_test(), :constant]}, [], [{:{}, [], args}]}
 
       @dialyzer {:nowarn_function, generation_clause: 3}
       defp generation_clause(this, {field, arg}, acc) do
-        {{:., [], [{:__aliases__, [alias: false], [:StreamData]}, :bind]}, [],
+        {{:., [], [prop_test(), :bind]}, [],
          [
            {{:., [], [{:__aliases__, [alias: false], [:Tyyppi, :Struct]}, :generation]}, [],
             [{{:., [], [this, field]}, [no_parens: true], []}]},
@@ -457,11 +454,13 @@ defmodule Tyyppi.Struct do
       @spec generation(t()) :: Tyyppi.Value.generation()
 
       def generation(%__MODULE__{} = this) do
+        prop_test = Tyyppi.Value.Generations.prop_test()
+
         this
         |> do_generation(@fields)
-        |> StreamData.map(&Tuple.to_list/1)
-        |> StreamData.map(&Enum.zip(@fields, &1))
-        |> StreamData.map(&Enum.into(&1, this))
+        |> prop_test.map(&Tuple.to_list/1)
+        |> prop_test.map(&Enum.zip(@fields, &1))
+        |> prop_test.map(&Enum.into(&1, this))
       end
 
       defoverridable generation: 1

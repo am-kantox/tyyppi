@@ -23,8 +23,12 @@ defmodule Tyyppi.Example.Value do
 
   @defaults foo: Value.optional(Value.atom()),
             bar: Value.integer(42),
-            baz: Value.date_time(~U[1973-09-30 02:46:30Z])
-  defstruct foo: Value.t(atom()), bar: Value.t(integer()), baz: Value.t(DateTime.t())
+            baz: Value.date_time(~U[1973-09-30 02:46:30Z]),
+            str: Value.optional(Value.string())
+  defstruct foo: Value.t(atom()),
+            bar: Value.t(integer()),
+            baz: Value.t(DateTime.t()),
+            str: Value.t(String.t())
 
   def validate_bar(%Value{value: value}) when value < 100, do: {:ok, value}
   def validate_bar(%Value{}), do: {:error, "Expected a value to be less than 100"}

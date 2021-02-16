@@ -39,7 +39,7 @@ defmodule Tyyppi.MixProject do
   defp deps do
     [
       {:boundary, "~> 0.4", runtime: false},
-      {:stream_data, "~> 0.5", only: [:dev, :test]},
+      {:stream_data, "~> 0.5", only: [:dev, :test, :ci]},
       {:formulae, "~> 0.8", only: [:dev, :test]},
       {:jason, "~> 1.0", only: [:dev, :test, :ci]},
       {:credo, "~> 1.0", only: [:dev, :test, :ci]},

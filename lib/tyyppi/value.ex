@@ -250,7 +250,12 @@ defmodule Tyyppi.Value do
 
   @spec string() :: t()
   @doc "Creates a not defined `String.t()` wrapped by `Tyyppi.Value`"
-  def string, do: %Tyyppi.Value{type: Tyyppi.parse(String.t()), coercion: &Coercions.string/1}
+  def string,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(String.t()),
+      coercion: &Coercions.string/1,
+      generation: &Generations.string/0
+    }
 
   @spec string(options :: any() | [factory_option()]) :: t()
   @doc "Factory for `String.t()` wrapped by `Tyyppi.Value`"

@@ -19,7 +19,7 @@ defmodule Tyyppi.Valuable do
   @typedoc """
   Type of the generation function, basically returning a stream of generated values
   """
-  if Code.ensure_loaded?(StreamData) do
+  if StreamData == Tyyppi.Value.Generations.prop_test() do
     @type generation :: StreamData.t(value())
   else
     @type generation :: Enumerable.t()

@@ -327,7 +327,7 @@ defmodule Tyyppi do
   defmacro coproduct(types), do: {:|, [], types}
 
   @doc false
-  def setup_ast(import?) do
+  defp setup_ast(import?) do
     [
       if(import?,
         do: quote(generated: true, do: import(Tyyppi)),
@@ -349,17 +349,15 @@ defmodule Tyyppi do
   end
 
   @doc false
-  def maybe_struct_guard(name \\ nil, struct) do
-    name =
-      if is_nil(name),
-        do: struct |> Module.split() |> List.last() |> Macro.underscore(),
-        else: name
+  defp maybe_struct_guard(struct) do
+    name = struct |> Module.split() |> List.last() |> Macro.underscore()
 
     name = :"is_#{name}"
 
     if can_struct_guard?() do
       quote generated: true, location: :keep do
         @doc "Helper guard to match instances of struct #{inspect(unquote(struct))}"
+        @doc since: "0.9.0", guard: true
         defguard unquote(name)(value)
                  when is_map(value) and value.__struct__ == unquote(struct)
       end
@@ -369,6 +367,7 @@ defmodule Tyyppi do
         Stub guard to match instances of struct #{inspect(unquote(struct))}.
         Upgrade to 11.0/23 to make it work.
         """
+        @doc since: "0.9.0", guard: true
         defguard unquote(name)(value) when is_map(value)
       end
     end
