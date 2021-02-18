@@ -16,6 +16,7 @@ end
 
 ## Changelog
 
+- **`0.8.1`** — Cosmetics, better dialyzer, `Value.string()` and various fixes
 - **`0.8.0`** — `Tyyppi.Valuable` behaviour + better docs
 - **`0.7.0`** — Generators + Collectable + Enumerable + Nested Structs
 - **`0.6.0`** — `Tyyppi.Value` for `Struct` + `Jason.Encoder` if `Jason` is presented + bugfixes
