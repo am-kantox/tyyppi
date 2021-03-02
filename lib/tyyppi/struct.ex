@@ -451,7 +451,7 @@ defmodule Tyyppi.Struct do
 
       @doc false
       @dialyzer {:nowarn_function, generation: 1}
-      @spec generation(t()) :: Tyyppi.Value.generation()
+      @spec generation(t()) :: Tyyppi.Valuable.generation()
 
       def generation(%__MODULE__{} = this) do
         prop_test = Tyyppi.Value.Generations.prop_test()
