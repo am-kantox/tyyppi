@@ -134,11 +134,14 @@ defmodule Tyyppi.T do
 
   def parse_definition(tuple) when is_tuple(tuple) do
     case Macro.decompose_call(tuple) do
-      :error -> {:type, 0, :tuple, tuple |> Tuple.to_list() |> Enum.map(&parse_definition/1)}
+      :error -> {:type, 0, :tuple, tuple |> decompose_tuple() |> Enum.map(&parse_definition/1)}
       {:{}, list} when is_list(list) -> {:type, 0, :tuple, Enum.map(list, &parse_definition/1)}
       _ -> parse_quoted(tuple).definition
     end
   end
+
+  defp decompose_tuple({:{}, _, list}) when is_list(list), do: list
+  defp decompose_tuple(tuple), do: Tuple.to_list(tuple)
 
   @doc false
   def union(ast, acc \\ [])
