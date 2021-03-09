@@ -8,7 +8,7 @@ defmodule Tyyppi.MixProject do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.10",
       compilers: compilers(Mix.env()),
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
