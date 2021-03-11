@@ -28,7 +28,7 @@ defmodule Test.Tyyppi.Struct do
   end
 
   test "reverse quoted types in struct" do
-    types = TypedStruct.types()
+    types = Tyyppi.Example.Struct.types()
     {foo, bar, baz} = {types[:foo], types[:bar], types[:baz]}
     baz_quoted = baz.quoted
 

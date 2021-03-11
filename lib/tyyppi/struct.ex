@@ -118,12 +118,13 @@ defmodule Tyyppi.Struct do
 
     declaration = do_declaration(quoted_types, struct_typespec)
     validation = do_validation()
-    collectable = do_collectable()
-    enumerable = do_enumerable()
     casts_and_validates = do_casts_and_validates()
     update = do_update()
-
     generation = do_generation()
+    mod = Macro.expand(__CALLER__.module, __ENV__)
+    as_value = do_as_value(Macro.escape(T.parse_quoted({{:., [], [mod, :t]}, [], []})))
+    collectable = do_collectable()
+    enumerable = do_enumerable()
 
     jason =
       if Code.ensure_loaded?(Jason.Encoder),
@@ -136,6 +137,7 @@ defmodule Tyyppi.Struct do
       casts_and_validates,
       update,
       generation,
+      as_value,
       collectable,
       enumerable,
       jason
@@ -330,6 +332,23 @@ defmodule Tyyppi.Struct do
     end
   end
 
+  defp do_as_value(type) do
+    quote generated: true, location: :keep do
+      @spec as_value(keyword()) :: Tyyppi.Value.t(unquote(type))
+      @doc "Factory for `#{__MODULE__}` wrapped by `Tyyppi.Value`"
+      def as_value(values \\ []) do
+        value = struct!(__MODULE__, values)
+
+        %Tyyppi.Value{
+          value: value,
+          type: unquote(type),
+          validation: &__MODULE__.validate/1,
+          generation: &__MODULE__.generation/1
+        }
+      end
+    end
+  end
+
   defp do_casts_and_validates do
     quote generated: true, location: :keep, unquote: false do
       funs =
@@ -452,6 +471,8 @@ defmodule Tyyppi.Struct do
       @doc false
       @dialyzer {:nowarn_function, generation: 1}
       @spec generation(t()) :: Tyyppi.Valuable.generation()
+
+      def generation(%Tyyppi.Value{value: %__MODULE__{} = value}), do: generation(value)
 
       def generation(%__MODULE__{} = this) do
         prop_test = Tyyppi.Value.Generations.prop_test()

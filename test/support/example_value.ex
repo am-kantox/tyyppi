@@ -32,21 +32,4 @@ defmodule Tyyppi.Example.Value do
 
   def validate_bar(%Value{value: value}) when value < 100, do: {:ok, value}
   def validate_bar(%Value{}), do: {:error, "Expected a value to be less than 100"}
-
-  @spec as_value(keyword()) :: Value.t()
-  @doc "Factory for `#{__MODULE__}` wrapped by `Tyyppi.Value`"
-  def as_value(values \\ []) do
-    value = struct!(__MODULE__, values)
-
-    %Tyyppi.Value{
-      value: value,
-      type: Tyyppi.parse(Tyyppi.Example.Value.t()),
-      validation: &__MODULE__.validate/1,
-      generation: &__MODULE__.generation/1
-    }
-  end
-
-  @doc false
-  def generation(%Value{value: value}), do: super(value)
-  def generation(value), do: super(value)
 end
