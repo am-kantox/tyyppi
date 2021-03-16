@@ -236,12 +236,16 @@ defmodule Tyyppi do
       ...> Tyyppi.of_type?(type, :foo)
       false
   """
-  def of_type?(%T{module: module, definition: definition}, term),
-    do: Matchers.of?(module, definition, term)
+  if Application.get_env(:tyyppi, :strict, false) do
+    def of_type?(%T{module: module, definition: definition}, term),
+      do: Matchers.of?(module, definition, term)
 
-  def of_type?(nil, term) do
-    Logger.debug("[🚰 Tyyppi.of_type?/2]: " <> inspect(term))
-    false
+    def of_type?(nil, term) do
+      Logger.debug("[🚰 Tyyppi.of_type?/2]: " <> inspect(term))
+      false
+    end
+  else
+    def of_type?(_, _), do: true
   end
 
   @doc """

@@ -2,7 +2,7 @@ import Config
 
 level =
   case Mix.env() do
-    #    :dev -> :debug
+    :dev -> :debug
     _ -> :info
   end
 
@@ -12,3 +12,5 @@ config :logger,
   compile_time_purge_matching: [
     [level_lower_than: level]
   ]
+
+config :tyyppi, :strict, true

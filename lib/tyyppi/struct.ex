@@ -127,7 +127,7 @@ defmodule Tyyppi.Struct do
     enumerable = do_enumerable()
 
     jason =
-      if Code.ensure_loaded?(Jason.Encoder),
+      if Application.get_env(:tyyppi, :jason, false) or Code.ensure_loaded?(Jason.Encoder),
         do: quote(do: @derive(Jason.Encoder)),
         else: []
 
@@ -332,9 +332,11 @@ defmodule Tyyppi.Struct do
     end
   end
 
-  defp do_as_value(type) do
+  defp do_as_value({:%{}, [], [{:__struct__, Tyyppi.T} | rest]} = type) do
+    quoted = Keyword.get(rest, :quoted, {:{}, [], [:any, [], []]})
+
     quote generated: true, location: :keep do
-      @spec as_value(keyword()) :: Tyyppi.Value.t(unquote(type))
+      @spec as_value(keyword()) :: Tyyppi.Value.t(unquote(quoted))
       @doc "Factory for `#{__MODULE__}` wrapped by `Tyyppi.Value`"
       def as_value(values \\ []) do
         value = struct!(__MODULE__, values)

@@ -12,7 +12,7 @@ defmodule Tyyppi.MixProject do
       compilers: compilers(Mix.env()),
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      consolidate_protocols: not (Mix.env() in [:dev, :test]),
+      consolidate_protocols: Mix.env() not in [:dev, :test],
       xref: [exclude: []],
       description: description(),
       package: package(),
