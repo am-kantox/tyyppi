@@ -5,7 +5,8 @@ defmodule Mix.Tasks.Tyyppi.Dump do
   Mix task to dump the content of the `Tyyppi.Stats` to disk.
 
   ## Command line options
-    * -t - the type pf the storage, `dets` or `process`; default is `ets`
+    * `-t` - the type pf the storage, `dets` or `process`; default is `ets`
+    * `-f` - the name of the file to dump to; default is `tyyppi.dets`
 
   If the types are stored as `-t process`, the application using it must start
   the `Tyyppi.Stats` process with `Tyyppi.Stats.load/3` specifying `:process` as
