@@ -16,6 +16,7 @@ end
 
 ## Changelog
 
+- **`0.10.0`** — `mix tyyppi.dump` to dump types to dets or binary for the `Stats` process
 - **`0.9.0`** — `Struct.as_value(%Struct{})`
 - **`0.8.1`** — Cosmetics, better dialyzer, `Value.string()` and various fixes
 - **`0.8.0`** — `Tyyppi.Valuable` behaviour + better docs
