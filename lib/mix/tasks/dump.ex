@@ -37,10 +37,11 @@ defmodule Mix.Tasks.Tyyppi.Dump do
 
     case type do
       "ets" ->
-        with {:ok, pid} <- Tyyppi.Stats.start_link() do
-          Tyyppi.Stats.dump(file)
-          GenServer.stop(pid)
-        else
+        case Tyyppi.Stats.start_link() do
+          {:ok, pid} ->
+            Tyyppi.Stats.dump(file)
+            GenServer.stop(pid)
+
           error ->
             Mix.raise("Cannot start a process, response: #{inspect(error)}.")
         end
