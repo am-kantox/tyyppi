@@ -394,5 +394,6 @@ defmodule Tyyppi do
   end
 
   @doc false
+  @spec any :: Tyyppi.T.t(term())
   def any, do: parse(any())
 end

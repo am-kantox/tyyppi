@@ -24,7 +24,7 @@ defmodule Tyyppi.Stats do
   @type callback ::
           (info() -> any()) | (info(), info() -> any()) | (info(), info(), info() -> any())
 
-  @spec start_link(meta :: keyword()) :: GenServer.on_start()
+  @spec start_link(types :: info(), meta :: keyword()) :: GenServer.on_start()
   @doc """
   Starts the cache process. The optional parameter might contain any payload
     that will be stored in the process’ state.
@@ -32,8 +32,8 @@ defmodule Tyyppi.Stats do
   If a payload has `callback :: (-> :ok)` parameter, this function will
     be called every time the types information gets rehashed.
   """
-  def start_link(meta \\ []),
-    do: GenServer.start_link(__MODULE__, %{meta: meta, types: %{}}, name: __MODULE__)
+  def start_link(types \\ %{}, meta \\ []),
+    do: GenServer.start_link(__MODULE__, %{meta: meta, types: types}, name: __MODULE__)
 
   @spec types :: info()
   @doc """
@@ -44,6 +44,42 @@ defmodule Tyyppi.Stats do
       pid when is_pid(pid) -> GenServer.call(__MODULE__, :types)
       nil -> __MODULE__ |> :ets.info() |> types_from_ets()
     end
+  end
+
+  @doc false
+  @spec dump(Path.t()) :: :ok | {:error, File.posix()}
+  def dump(file) do
+    case Process.whereis(__MODULE__) do
+      pid when is_pid(pid) ->
+        File.write(file, :erlang.term_to_binary(types()))
+
+      nil ->
+        File.rm(file)
+
+        with {:ok, dets} <- :dets.open_file(__MODULE__, file: to_charlist(file)),
+             _info <- __MODULE__ |> :ets.info() |> types_from_ets(),
+             __MODULE__ <- :ets.to_dets(__MODULE__, dets),
+             do: :dets.close(dets)
+    end
+  end
+
+  @doc false
+  @spec load(:process | :ets, Path.t(), keyword()) :: GenServer.on_start()
+  def load(kind \\ :ets, file, meta \\ [])
+
+  def load(:process, file, meta) do
+    file
+    |> File.read!()
+    |> :erlang.binary_to_term()
+    |> start_link(meta)
+  end
+
+  def load(:ets, file, _meta) do
+    with true <- File.exists?(file),
+         {:ok, dets} <- file |> to_charlist() |> :dets.open_file(),
+         _ <- :ets.new(__MODULE__, [:set, :named_table, :public]),
+         true <- :ets.from_dets(__MODULE__, dets),
+         do: :dets.close(dets)
   end
 
   @spec type(fun() | atom() | T.ast() | T.raw()) :: Tyyppi.T.t(wrapped) when wrapped: term()

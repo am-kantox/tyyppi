@@ -10,4 +10,5 @@ tyyppi-*.tar
 /.dialyzer/*.plt*
 .mix_tasks
 config/.telemetria.config.json
+/*.dets
 .tool-versions
