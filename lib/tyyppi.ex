@@ -20,6 +20,7 @@ defmodule Tyyppi do
   Sigil to simplify specification of `Tyyppi.T.t(term())` type, it’s literally the wrapper for `Tyyppi.parse/1`.
 
   ## Examples
+
       iex> import Tyyppi
       iex> ~t[integer()]
       %Tyyppi.T{
@@ -43,11 +44,20 @@ defmodule Tyyppi do
       }
   """
   defmacro sigil_t({:<<>>, _meta, [string]}, []) when is_binary(string) do
-    quote bind_quoted: [string: string] do
-      string
-      |> :elixir_interpolation.unescape_string()
-      |> Code.string_to_quoted!()
-      |> Tyyppi.parse_quoted()
+    if Version.compare(System.version(), "1.12.0") == :lt do
+      quote bind_quoted: [string: string] do
+        string
+        |> :elixir_interpolation.unescape_chars()
+        |> Code.string_to_quoted!()
+        |> Tyyppi.parse_quoted()
+      end
+    else
+      quote bind_quoted: [string: string] do
+        string
+        |> :elixir_interpolation.unescape_string()
+        |> Code.string_to_quoted!()
+        |> Tyyppi.parse_quoted()
+      end
     end
   end
 
