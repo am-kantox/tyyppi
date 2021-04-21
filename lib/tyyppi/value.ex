@@ -206,6 +206,28 @@ defmodule Tyyppi.Value do
   @impl Tyyppi.Valuable
   def coerce(%__MODULE__{value: value} = data), do: data.coercion.(value)
 
+  @impl Tyyppi.Valuable
+  def flatten(data, opts \\ [])
+
+  def flatten(%__MODULE__{value: %type{value: value}}, opts) do
+    force = Keyword.get(opts, :force, true)
+
+    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+      do: apply(type, :flatten, [value, opts]),
+      else: value
+  end
+
+  def flatten(%type{value: value}, opts) do
+    force = Keyword.get(opts, :force, true)
+
+    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+      do: apply(type, :flatten, [value, opts]),
+      else: value
+  end
+
+  def flatten(%__MODULE__{value: value}, _opts), do: value
+  def flatten(value, _opts), do: value
+
   ##############################################################################
   @type factory_option ::
           {:value, any()}

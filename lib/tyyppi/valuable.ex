@@ -41,4 +41,9 @@ defmodule Tyyppi.Valuable do
   The generation function, returning the generator for the whole
   """
   @callback generation(value()) :: generation()
+
+  @doc """
+  Flattens the struct using the options passed
+  """
+  @callback flatten(value(), keyword()) :: value()
 end

@@ -45,7 +45,7 @@ defmodule Tyyppi do
   defmacro sigil_t({:<<>>, _meta, [string]}, []) when is_binary(string) do
     quote bind_quoted: [string: string] do
       string
-      |> :elixir_interpolation.unescape_chars()
+      |> :elixir_interpolation.unescape_string()
       |> Code.string_to_quoted!()
       |> Tyyppi.parse_quoted()
     end

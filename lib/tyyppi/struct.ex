@@ -131,6 +131,12 @@ defmodule Tyyppi.Struct do
         do: quote(do: @derive(Jason.Encoder)),
         else: []
 
+    flatten =
+      quote do
+        defdelegate flatten(struct), to: Tyyppi.Struct
+        defdelegate flatten(struct, opts), to: Tyyppi.Struct
+      end
+
     [
       declaration,
       validation,
@@ -140,6 +146,7 @@ defmodule Tyyppi.Struct do
       as_value,
       collectable,
       enumerable,
+      flatten,
       jason
     ]
   end
@@ -503,4 +510,61 @@ defmodule Tyyppi.Struct do
 
   @impl Tyyppi.Valuable
   def generation(%type{} = value), do: type.generation(value)
+
+  @impl Tyyppi.Valuable
+  def flatten(value, opts \\ [])
+
+  def flatten(%Tyyppi.Value{} = value, opts),
+    do: Tyyppi.Value.flatten(value, opts)
+
+  def flatten(%type{} = value, opts) do
+    force = Keyword.get(opts, :force, true)
+    squeeze? = Keyword.get(opts, :squeeze, false)
+
+    result =
+      Enum.reduce(value, %{}, fn
+        {key, %Tyyppi.Value{} = value}, acc ->
+          value |> Tyyppi.Value.flatten() |> flatten_once(acc, key, opts)
+
+        {key, %subtype{} = value}, acc ->
+          if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+            do: value |> subtype.flatten() |> flatten_once(acc, key, opts),
+            else: Map.put(acc, to_string(key), value)
+
+        {key, value}, acc ->
+          Map.put(acc, to_string(key), value)
+      end)
+
+    if squeeze? do
+      Enum.reduce(result, %{}, fn
+        {_, nil}, acc -> acc
+        {k, v}, acc -> Map.put(acc, k, v)
+      end)
+    else
+      result
+    end
+  end
+
+  defp flatten_once(value, acc, key, opts) do
+    joiner = Keyword.get(opts, :joiner, "_")
+
+    case value do
+      %_type{} = struct ->
+        if not is_nil(Enumerable.impl_for(struct)) do
+          struct
+          |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Tyyppi.Value.flatten(v, opts)} end)
+          |> Map.merge(acc)
+        else
+          Map.put(acc, to_string(key), Tyyppi.Value.flatten(value, opts))
+        end
+
+      %{} = map ->
+        map
+        |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Tyyppi.Value.flatten(v, opts)} end)
+        |> Map.merge(acc)
+
+      _ ->
+        Map.put(acc, to_string(key), Tyyppi.Value.flatten(value, opts))
+    end
+  end
 end
