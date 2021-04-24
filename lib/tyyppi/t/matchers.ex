@@ -9,6 +9,7 @@ defmodule Tyyppi.Matchers do
 
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
+  def of?(_module, {:atom, _, nil}, ""), do: false
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
   def of?(_module, {:integer, _, _}, _), do: false
 
@@ -87,6 +88,8 @@ defmodule Tyyppi.Matchers do
     |> Enum.zip(Tuple.to_list(term))
     |> Enum.all?(fn {type, term} -> of?(module, type, term) end)
   end
+
+  def of?(_module, {:type, _, :tuple, type}, _term) when is_list(type), do: false
 
   def of?(module, {:type, _, :keyword, []}, list), do: keyword?(module, list)
 
