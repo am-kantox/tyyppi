@@ -519,7 +519,7 @@ defmodule Tyyppi.Struct do
 
   def flatten(%_type{} = value, opts) do
     force = Keyword.get(opts, :force, true)
-    squeeze? = Keyword.get(opts, :squeeze, false)
+    squeeze = Keyword.get(opts, :squeeze, false)
 
     if is_nil(Enumerable.impl_for(value)) do
       value
@@ -538,13 +538,23 @@ defmodule Tyyppi.Struct do
             Map.put(acc, to_string(key), value)
         end)
 
-      if squeeze? do
-        Enum.reduce(result, %{}, fn
-          {_, nil}, acc -> acc
-          {k, v}, acc -> Map.put(acc, k, v)
-        end)
-      else
-        result
+      case squeeze do
+        true ->
+          Enum.reduce(result, %{}, fn
+            {_, nil}, acc -> acc
+            {k, v}, acc -> Map.put(acc, k, v)
+          end)
+
+        false ->
+          result
+
+        f when is_function(f, 1) ->
+          Enum.reduce(result, %{}, fn {k, v}, acc ->
+            case f.({k, v}) do
+              {:ok, v} -> Map.put(acc, k, v)
+              :squeeze -> acc
+            end
+          end)
       end
     end
   end

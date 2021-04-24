@@ -9,7 +9,13 @@ defmodule Tyyppi.Matchers do
 
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
-  def of?(_module, {:atom, _, nil}, ""), do: false
+  def of?(nil, {:atom, _, nil}, _), do: false
+  # microoptimizations
+  def of?(_, {:type, _, :atom, []}, nil), do: true
+  def of?(_, {:type, _, :binary, _}, nil), do: false
+  def of?(_, {:type, _, :integer, _}, nil), do: false
+  def of?(_, {:type, _, :float, _}, nil), do: false
+  def of?(_, {:type, _, :fun, _}, nil), do: false
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
   def of?(_module, {:integer, _, _}, _), do: false
 

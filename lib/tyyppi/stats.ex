@@ -77,7 +77,7 @@ defmodule Tyyppi.Stats do
   def load(:ets, file, _meta) do
     with true <- File.exists?(file),
          {:ok, dets} <- file |> to_charlist() |> :dets.open_file(),
-         _ <- :ets.new(__MODULE__, [:set, :named_table, :public]),
+         _ <- types_from_ets(:undefined),
          true <- :ets.from_dets(__MODULE__, dets),
          do: :dets.close(dets)
   end
