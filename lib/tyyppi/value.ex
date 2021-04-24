@@ -170,12 +170,12 @@ defmodule Tyyppi.Value do
 
   @spec validate(data :: t(), any()) :: Tyyppi.Valuable.either()
   def validate(%__MODULE__{__meta__: %{optional?: true} = meta} = data, nil) do
-    if Tyyppi.of_type?(data.type, nil) do
-      {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
-    else
-      {:error, [type: [expected: to_string(data.type), got: nil]]}
-    end
+    defined? = Tyyppi.of_type?(data.type, nil)
+    {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, defined?), value: nil}}
   end
+
+  def validate(meta() = data, nil),
+    do: {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, false), value: nil}}
 
   def validate(meta() = data, value) do
     with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(value)},
