@@ -8,7 +8,9 @@ defmodule Tyyppi.Matchers do
             when timeout == :infinity or (is_integer(timeout) and timeout >= 0)
 
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
+  def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
+  def of?(_module, {:integer, _, _}, _), do: false
 
   def of?(module, {:user_type, _, name, params}, term) do
     %{module: module, definition: definition} = Stats.type({module, name, length(params)})

@@ -212,7 +212,7 @@ defmodule Tyyppi.Value do
   def flatten(%__MODULE__{value: %type{value: value}}, opts) do
     force = Keyword.get(opts, :force, true)
 
-    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+    if force or Tyyppi.can_flatten?(type),
       do: apply(type, :flatten, [value, opts]),
       else: value
   end
@@ -220,7 +220,7 @@ defmodule Tyyppi.Value do
   def flatten(%type{value: value}, opts) do
     force = Keyword.get(opts, :force, true)
 
-    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+    if force or Tyyppi.can_flatten?(type),
       do: apply(type, :flatten, [value, opts]),
       else: value
   end
