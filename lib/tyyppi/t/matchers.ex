@@ -10,6 +10,16 @@ defmodule Tyyppi.Matchers do
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
   def of?(nil, {:atom, _, nil}, _), do: false
+
+  def of?(_module, {:atom, _, nil}, {:type, _, type, type_def}) do
+    Logger.debug(
+      "[⚠️ Matchers.of?/3] dependent types are not yet supported: " <>
+        inspect({type, type_def})
+    )
+
+    true
+  end
+
   # microoptimizations
   def of?(_, {:type, _, :atom, []}, nil), do: true
   def of?(_, {:type, _, :binary, _}, nil), do: false
@@ -102,6 +112,11 @@ defmodule Tyyppi.Matchers do
   ##################### BINARY ######################
 
   def of?(_module, {:type, _, :binary, []}, term) when is_binary(term), do: true
+
+  def of?(_module, {:type, _, :binary, _}, term)
+      when not is_bitstring(term) and not is_binary(term),
+      do: false
+
   def of?(_module, {:type, _, :binary, [{:integer, _, 0}, {:integer, _, 0}]}, ""), do: true
 
   def of?(_module, {:type, _, :binary, [{:integer, _, n}, {:integer, _, 0}]}, term)
@@ -187,15 +202,6 @@ defmodule Tyyppi.Matchers do
     do: Enum.any?(ts, &of?(module, &1, term))
 
   def of?(_module, type, {:type, _, :union, ts}), do: type in ts
-
-  def of?(_module, {:atom, _, nil}, {:type, _, type, type_def}) do
-    Logger.debug(
-      "[⚠️ Matchers.of?/3] dependent types are not yet supported: " <>
-        inspect({type, type_def})
-    )
-
-    true
-  end
 
   ###################### VARS #######################
 
