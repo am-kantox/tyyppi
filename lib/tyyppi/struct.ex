@@ -283,7 +283,47 @@ defmodule Tyyppi.Struct do
         end
       end
 
-      defoverridable validate: 1
+      @spec errors(t()) :: list()
+      def errors(%__MODULE__{} = s) do
+        Enum.reduce(s, [], fn
+          {key, %type{} = value}, errors ->
+            if type.__info__(:functions)[:validate] == 1 do
+              case type.validate(value) do
+                {:ok, value} ->
+                  if type.__info__(:functions)[:valid?] != 1 or type.valid?(value),
+                    do: errors,
+                    else: [{key, :invalid_value} | errors]
+
+                {:error, error} ->
+                  error ++ errors
+              end
+            else
+              errors
+            end
+
+          {_, _}, errors ->
+            errors
+        end)
+      end
+
+      @spec valid?(t()) :: boolean()
+      def valid?(%__MODULE__{} = s) do
+        Enum.reduce_while(s, true, fn
+          _, false ->
+            {:halt, false}
+
+          {_, %Tyyppi.Value{} = v}, true ->
+            {:cont, Tyyppi.Value.valid?(v)}
+
+          {_, %type{} = v}, true ->
+            {:cont, type.__info__(:functions)[:valid?] == 1 && type.valid?(v)}
+
+          _, true ->
+            {:cont, true}
+        end)
+      end
+
+      defoverridable validate: 1, valid?: 1
     end
   end
 
