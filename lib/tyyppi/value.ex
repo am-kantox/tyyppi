@@ -170,12 +170,12 @@ defmodule Tyyppi.Value do
 
   @spec validate(data :: t(), any()) :: Tyyppi.Valuable.either()
   def validate(%__MODULE__{__meta__: %{optional?: true} = meta} = data, nil) do
-    if Tyyppi.of_type?(data.type, nil) do
-      {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, true), value: nil}}
-    else
-      {:error, [type: [expected: to_string(data.type), got: nil]]}
-    end
+    defined? = Tyyppi.of_type?(data.type, nil)
+    {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, defined?), value: nil}}
   end
+
+  def validate(meta() = data, nil),
+    do: {:ok, %__MODULE__{data | __meta__: Map.put(meta, :defined?, false), value: nil}}
 
   def validate(meta() = data, value) do
     with {:coercion, {:ok, cast}} <- {:coercion, data.coercion.(value)},
@@ -212,7 +212,7 @@ defmodule Tyyppi.Value do
   def flatten(%__MODULE__{value: %type{value: value}}, opts) do
     force = Keyword.get(opts, :force, true)
 
-    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+    if force or Tyyppi.can_flatten?(type),
       do: apply(type, :flatten, [value, opts]),
       else: value
   end
@@ -220,7 +220,7 @@ defmodule Tyyppi.Value do
   def flatten(%type{value: value}, opts) do
     force = Keyword.get(opts, :force, true)
 
-    if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
+    if force or Tyyppi.can_flatten?(type),
       do: apply(type, :flatten, [value, opts]),
       else: value
   end

@@ -1,7 +1,7 @@
 defmodule Tyyppi.Struct do
   import Kernel, except: [defstruct: 1]
 
-  alias Tyyppi.T
+  alias Tyyppi.{T, Value}
   require T
 
   @moduledoc """
@@ -554,34 +554,48 @@ defmodule Tyyppi.Struct do
   @impl Tyyppi.Valuable
   def flatten(value, opts \\ [])
 
-  def flatten(%Tyyppi.Value{} = value, opts),
-    do: Tyyppi.Value.flatten(value, opts)
+  def flatten(%Value{} = value, opts),
+    do: Value.flatten(value, opts)
 
-  def flatten(%type{} = value, opts) do
+  def flatten(%_type{} = value, opts) do
     force = Keyword.get(opts, :force, true)
-    squeeze? = Keyword.get(opts, :squeeze, false)
+    squeeze = Keyword.get(opts, :squeeze, false)
 
-    result =
-      Enum.reduce(value, %{}, fn
-        {key, %Tyyppi.Value{} = value}, acc ->
-          value |> Tyyppi.Value.flatten() |> flatten_once(acc, key, opts)
-
-        {key, %subtype{} = value}, acc ->
-          if force or {:flatten, 2} in Keyword.take(type.__info__(:functions), :flatten),
-            do: value |> subtype.flatten() |> flatten_once(acc, key, opts),
-            else: Map.put(acc, to_string(key), value)
-
-        {key, value}, acc ->
-          Map.put(acc, to_string(key), value)
-      end)
-
-    if squeeze? do
-      Enum.reduce(result, %{}, fn
-        {_, nil}, acc -> acc
-        {k, v}, acc -> Map.put(acc, k, v)
-      end)
+    if is_nil(Enumerable.impl_for(value)) do
+      value
     else
-      result
+      result =
+        Enum.reduce(value, %{}, fn
+          {key, %Value{} = value}, acc ->
+            value |> Value.flatten() |> flatten_once(acc, key, opts)
+
+          {key, %subtype{} = value}, acc ->
+            if force or Tyyppi.can_flatten?(subtype),
+              do: value |> subtype.flatten() |> flatten_once(acc, key, opts),
+              else: Map.put(acc, to_string(key), value)
+
+          {key, value}, acc ->
+            Map.put(acc, to_string(key), value)
+        end)
+
+      case squeeze do
+        true ->
+          Enum.reduce(result, %{}, fn
+            {_, nil}, acc -> acc
+            {k, v}, acc -> Map.put(acc, k, v)
+          end)
+
+        false ->
+          result
+
+        f when is_function(f, 1) ->
+          Enum.reduce(result, %{}, fn {k, v}, acc ->
+            case f.({k, v}) do
+              {:ok, v} -> Map.put(acc, k, v)
+              :squeeze -> acc
+            end
+          end)
+      end
     end
   end
 
@@ -590,21 +604,21 @@ defmodule Tyyppi.Struct do
 
     case value do
       %_type{} = struct ->
-        if not is_nil(Enumerable.impl_for(struct)) do
-          struct
-          |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Tyyppi.Value.flatten(v, opts)} end)
-          |> Map.merge(acc)
+        if is_nil(Enumerable.impl_for(struct)) do
+          Map.put(acc, to_string(key), Value.flatten(value, opts))
         else
-          Map.put(acc, to_string(key), Tyyppi.Value.flatten(value, opts))
+          struct
+          |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Value.flatten(v, opts)} end)
+          |> Map.merge(acc)
         end
 
       %{} = map ->
         map
-        |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Tyyppi.Value.flatten(v, opts)} end)
+        |> Map.new(fn {k, v} -> {Enum.join([key, k], joiner), Value.flatten(v, opts)} end)
         |> Map.merge(acc)
 
       _ ->
-        Map.put(acc, to_string(key), Tyyppi.Value.flatten(value, opts))
+        Map.put(acc, to_string(key), Value.flatten(value, opts))
     end
   end
 end

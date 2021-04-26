@@ -194,6 +194,7 @@ defmodule Tyyppi.T do
     @moduledoc false
     use Boundary, classify_to: Tyyppi.T
 
+    defp stringify([]), do: ~s|[]|
     defp stringify({:atom, _, atom}) when atom in [nil, false, true], do: ~s|#{atom}|
     defp stringify({:atom, _, atom}), do: ~s|:#{atom}|
     defp stringify({:var, _, name}), do: ~s|_#{name}|
@@ -203,6 +204,16 @@ defmodule Tyyppi.T do
       params = params |> Enum.map(&stringify/1) |> Enum.join(", ")
       ~s|#{type}(#{params})|
     end
+
+    defp stringify({:remote_type, _, type}) when is_list(type),
+      do: type |> Enum.map(&stringify/1) |> Enum.join(", ")
+
+    defp stringify({:remote_type, _, type, params}) do
+      params = params |> Enum.map(&stringify/1) |> Enum.join(", ")
+      ~s|#{type}(#{params})|
+    end
+
+    defp stringify(any), do: inspect(any)
 
     def to_string(%T{module: nil, name: nil, definition: {:type, _, _type, _params} = type}),
       do: stringify(type)

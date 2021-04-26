@@ -17,6 +17,7 @@ defmodule Mix.Tasks.Tyyppi.Dump do
 
   use Mix.Task
   use Boundary, deps: [Tyyppi]
+  alias Tyyppi.Stats
 
   @switches [
     type: :string,
@@ -36,18 +37,18 @@ defmodule Mix.Tasks.Tyyppi.Dump do
     Mix.shell().info("Storing the types as #{type} into #{file}")
 
     case type do
-      "ets" ->
-        case Tyyppi.Stats.start_link() do
+      "process" ->
+        case Stats.start_link() do
           {:ok, pid} ->
-            Tyyppi.Stats.dump(file)
+            Stats.dump(file)
             GenServer.stop(pid)
 
           error ->
             Mix.raise("Cannot start a process, response: #{inspect(error)}.")
         end
 
-      "process" ->
-        Tyyppi.Stats.dump(file)
+      "ets" ->
+        Stats.dump(file)
 
       other ->
         Mix.raise("Unknown storage type #{other}, expected `ets` or `process`.")

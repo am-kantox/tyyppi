@@ -8,7 +8,16 @@ defmodule Tyyppi.Matchers do
             when timeout == :infinity or (is_integer(timeout) and timeout >= 0)
 
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
+  def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
+  def of?(nil, {:atom, _, nil}, _), do: false
+  # microoptimizations
+  def of?(_, {:type, _, :atom, []}, nil), do: true
+  def of?(_, {:type, _, :binary, _}, nil), do: false
+  def of?(_, {:type, _, :integer, _}, nil), do: false
+  def of?(_, {:type, _, :float, _}, nil), do: false
+  def of?(_, {:type, _, :fun, _}, nil), do: false
   def of?(_module, {:integer, _, term}, term) when is_integer(term), do: true
+  def of?(_module, {:integer, _, _}, _), do: false
 
   def of?(module, {:user_type, _, name, params}, term) do
     %{module: module, definition: definition} = Stats.type({module, name, length(params)})
@@ -85,6 +94,8 @@ defmodule Tyyppi.Matchers do
     |> Enum.zip(Tuple.to_list(term))
     |> Enum.all?(fn {type, term} -> of?(module, type, term) end)
   end
+
+  def of?(_module, {:type, _, :tuple, type}, _term) when is_list(type), do: false
 
   def of?(module, {:type, _, :keyword, []}, list), do: keyword?(module, list)
 

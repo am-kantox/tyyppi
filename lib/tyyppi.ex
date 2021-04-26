@@ -404,6 +404,12 @@ defmodule Tyyppi do
   end
 
   @doc false
+  @spec can_flatten?(type :: module()) :: boolean()
+  def can_flatten?(type) do
+    {:flatten, 2} in Keyword.take(type.__info__(:functions), [:flatten])
+  end
+
+  @doc false
   @spec any :: Tyyppi.T.t(term())
   def any, do: parse(any())
 end
