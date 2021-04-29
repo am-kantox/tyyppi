@@ -140,9 +140,9 @@ defmodule Tyyppi.Matchers do
   # {Tyyppi.Value, {:type, 51, :fun, [{:type, 51, :product, []},
   #   {:remote_type, 51, [{:atom, 0, Tyyppi.Valuable}, {:atom, 0, :generation}, []]}]},
   #   &Tyyppi.Value.Generations.optional/1}
-  def of?(_module, {:type, _, f, [{:type, _, :product, []}, _result_type]}, fun)
-      when f in [:fun, :function] and is_function(fun),
-      do: true
+  # def of?(_module, {:type, _, f, [{:type, _, :product, []}, _result_type]}, fun)
+  #     when f in [:fun, :function] and is_function(fun),
+  #     do: true
 
   def of?(_module, {:type, _, f, [{:type, _, :product, args}, _result_type]}, fun)
       when f in [:fun, :function] and is_function(fun, length(args)),
