@@ -137,12 +137,17 @@ defmodule Tyyppi.Matchers do
       when is_function(fun, length(args)),
       do: true
 
-  # {Tyyppi.Value, {:type, 51, :fun, [{:type, 51, :product, []},
-  #   {:remote_type, 51, [{:atom, 0, Tyyppi.Valuable}, {:atom, 0, :generation}, []]}]},
-  #   &Tyyppi.Value.Generations.optional/1}
-  # def of?(_module, {:type, _, f, [{:type, _, :product, []}, _result_type]}, fun)
-  #     when f in [:fun, :function] and is_function(fun),
-  #     do: true
+  def of?(
+        Tyyppi.Value,
+        {:type, _, f,
+         [
+           {:type, _, :product, []},
+           {:remote_type, _, [{:atom, _, Tyyppi.Valuable}, {:atom, _, :generation}, []]}
+         ]},
+        fun
+      )
+      when f in [:fun, :function] and is_function(fun),
+      do: true
 
   def of?(_module, {:type, _, f, [{:type, _, :product, args}, _result_type]}, fun)
       when f in [:fun, :function] and is_function(fun, length(args)),
@@ -213,6 +218,7 @@ defmodule Tyyppi.Matchers do
   ###################### VARS #######################
 
   def of?(_module, {:var, _, _name}, {:any, []}), do: true
+  def of?(_module, var, {:any, [], []}) when is_atom(var), do: true
 
   def of?(module, {:var, _, name}, term) do
     Logger.debug(
