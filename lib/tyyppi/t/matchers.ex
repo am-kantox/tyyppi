@@ -217,8 +217,16 @@ defmodule Tyyppi.Matchers do
 
   ###################### VARS #######################
 
-  def of?(_module, {:var, _, _name}, {:any, []}), do: true
+  def of?(_module, {:var, _, var}, {:any, []}) when is_atom(var), do: true
   def of?(_module, var, {:any, [], []}) when is_atom(var), do: true
+  def of?(_module, {:var, _, var}, {:any, [], []}) when is_atom(var), do: true
+
+  def of?(_module, var, {:union, [], [{:atom, _, nil}, {:type, _, :any, []}]}) when is_atom(var),
+    do: true
+
+  def of?(_module, {:var, _, var}, {:union, [], [{:atom, _, nil}, {:type, _, :any, []}]})
+      when is_atom(var),
+      do: true
 
   def of?(module, {:var, _, name}, term) do
     Logger.debug(
