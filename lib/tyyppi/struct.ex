@@ -116,7 +116,7 @@ defmodule Tyyppi.Struct do
         end)
       end
 
-    declaration = do_declaration(quoted_types, struct_typespec)
+    declaration = do_declaration(quoted_types, struct_typespec, __CALLER__.line)
     validation = do_validation()
     casts_and_validates = do_casts_and_validates()
     update = do_update()
@@ -206,15 +206,27 @@ defmodule Tyyppi.Struct do
     do: Enum.map(types, &typespec(&1, env))
 
   #############################################################################
-  defp do_declaration(quoted_types, struct_typespec) do
+  defp do_declaration(quoted_types, struct_typespec, line) do
     quote generated: true, location: :keep do
+      if is_nil(Module.get_attribute(__MODULE__, :moduledoc)) do
+        Module.put_attribute(
+          __MODULE__,
+          :moduledoc,
+          {unquote(line),
+           """
+           The implementation of `Tyyppi.Struct`, exposing the type and `Access`
+             implementation to deal with this object.
+           """}
+        )
+      end
+
       alias Tyyppi.Struct
 
       @quoted_types unquote(quoted_types)
       @fields Keyword.keys(@quoted_types)
 
       @typedoc ~s"""
-      The type describing this struct. This type will be used to validate
+      The type describing `#{inspect(__MODULE__)}`. This type will be used to validate
         upserts when called via `Access` and/or `Tyyppi.Struct.put/3`,
         `Tyyppi.Struct.update/3`, both delegating to generated
         `#{inspect(__MODULE__)}.update/2`.

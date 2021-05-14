@@ -10,7 +10,9 @@ defmodule Tyyppi.Matchers do
   def of?(_module, {:atom, _, term}, term) when is_atom(term), do: true
   def of?(_module, {:atom, _, _}, term) when is_atom(term), do: false
   def of?(nil, {:atom, _, nil}, _), do: false
-  def of?(_module, {:atom, _, nil}, {:type, _, :union, [{:atom, _, nil}, {:type, _, :any, []}]}), do: true
+
+  def of?(_module, {:atom, _, nil}, {:type, _, :union, [{:atom, _, nil}, {:type, _, :any, []}]}),
+    do: true
 
   def of?(_module, {:atom, _, nil}, {:type, _, type, type_def}) do
     Logger.debug(
