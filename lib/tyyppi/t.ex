@@ -201,15 +201,15 @@ defmodule Tyyppi.T do
     defp stringify({:type, _, type}), do: ~s|#{type}()|
 
     defp stringify({:type, _, type, params}) do
-      params = params |> Enum.map(&stringify/1) |> Enum.join(", ")
+      params = Enum.map_join(params, ", ", &stringify/1)
       ~s|#{type}(#{params})|
     end
 
     defp stringify({:remote_type, _, type}) when is_list(type),
-      do: type |> Enum.map(&stringify/1) |> Enum.join(", ")
+      do: Enum.map_join(type, ", ", &stringify/1)
 
     defp stringify({:remote_type, _, type, params}) do
-      params = params |> Enum.map(&stringify/1) |> Enum.join(", ")
+      params = Enum.map_join(params, ", ", &stringify/1)
       ~s|#{type}(#{params})|
     end
 

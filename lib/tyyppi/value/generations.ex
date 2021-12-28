@@ -30,6 +30,41 @@ defmodule Tyyppi.Value.Generations do
   def pos_integer, do: @prop_test.positive_integer() |> @prop_test.map(&Value.pos_integer/1)
   def pos_integer(top) when is_integer(top) and top > 0, do: integer(1..top)
 
+  def date, do: date(Date.range(~D[1970-01-01], ~D[2038-01-01]))
+
+  def date(range) do
+    {min_year, max_year} = {range.first.year, range.last.year}
+    year = Enum.random(min_year..max_year)
+
+    min_month =
+      case year do
+        ^min_year -> range.first.month
+        _ -> 1
+      end
+
+    max_month =
+      case year do
+        ^max_year -> range.last.month
+        _ -> 12
+      end
+
+    month = Enum.random(min_month..max_month)
+
+    min_day =
+      if year == range.first.year and month == range.first.month, do: range.first.day, else: 1
+
+    max_day =
+      cond do
+        year == range.last.year and month == range.last.month -> range.last.day
+        month == 2 -> if Date.leap_year?(year), do: 29, else: 28
+        month in [4, 6, 9, 11] -> 30
+        true -> 31
+      end
+
+    day = Enum.random(min_day..max_day)
+    {year, month, day} |> @prop_test.tuple() |> @prop_test.map(&Value.date/1)
+  end
+
   def date_time,
     do: @prop_test.integer() |> @prop_test.map(&abs(&1)) |> @prop_test.map(&Value.date_time/1)
 

@@ -93,6 +93,23 @@ defmodule Test.Tyyppi.Value do
                Value.pos_integer(0)
     end
 
+    test "date" do
+      assert is_nil(get_in(Value.date(42), [:value]))
+      assert ~D[1973-09-30] == get_in(Value.date("1973-09-30"), [:value])
+      assert ~D[1973-09-30] == get_in(Value.date({1973, 9, 30}), [:value])
+
+      assert %{
+               __meta__: %{
+                 errors: [
+                   coercion: [
+                     message: "Expected Date() or binary() or erlang date tuple.",
+                     got: :ok
+                   ]
+                 ]
+               }
+             } = Value.date(:ok)
+    end
+
     test "date_time" do
       assert ~U[1970-01-01 00:00:42Z] == get_in(Value.date_time(42), [:value])
       assert ~U[1973-09-30 02:46:30Z] == get_in(Value.date_time("1973-09-30T02:46:30Z"), [:value])

@@ -66,6 +66,7 @@ defmodule Tyyppi do
       case :elixir_interpolation.unescape_tokens(pieces) do
         {:ok, unescaped_tokens} -> unescaped_tokens
         {:error, reason} -> raise ArgumentError, to_string(reason)
+        {:error, reason, _} -> raise ArgumentError, to_string(reason)
       end
 
     quote do

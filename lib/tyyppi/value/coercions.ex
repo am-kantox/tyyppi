@@ -40,6 +40,21 @@ defmodule Tyyppi.Value.Coercions do
   def integer(_not_integer),
     do: {:error, "Expected number() or binary()"}
 
+  @spec date(value :: any()) :: Tyyppi.Valuable.either()
+  def date(%Date{} = d), do: {:ok, d}
+
+  def date({_, _, _} = value) do
+    with {:error, reason} <- Date.from_erl(value),
+         do: {:error, "Expected Date() or binary() or erlang date tuple. Reason: [#{reason}]."}
+  end
+
+  def date(value) when is_binary(value) do
+    with {:error, reason} <- Date.from_iso8601(value),
+         do: {:error, "Expected Date() or binary() or erlang date tuple. Reason: [#{reason}]."}
+  end
+
+  def date(_), do: {:error, "Expected Date() or binary() or erlang date tuple."}
+
   @spec date_time(value :: any()) :: Tyyppi.Valuable.either()
   def date_time(%DateTime{} = dt), do: {:ok, dt}
 

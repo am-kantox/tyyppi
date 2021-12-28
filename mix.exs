@@ -2,7 +2,7 @@ defmodule Tyyppi.MixProject do
   use Mix.Project
 
   @app :tyyppi
-  @version "0.11.8"
+  @version "0.12.0"
 
   def project do
     [

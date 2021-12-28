@@ -15,6 +15,7 @@ end
 ```
 
 ## Changelog
+- **`0.12.0`** — `Tyyppi.Value.date`
 - **`0.11.1`** — `{Struct,Value}.valid?/1`, `Struct.errors/1`
 - **`0.11.0`** — `{Struct,Value}.flatten/{1,2}`
 - **`0.10.0`** — `mix tyyppi.dump` to dump types to dets or binary for the `Stats` process

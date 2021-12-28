@@ -533,10 +533,10 @@ defmodule Tyyppi.Struct do
       @dialyzer {:nowarn_function, generation: 1}
       @spec generation(t()) :: Tyyppi.Valuable.generation()
 
-      def generation(%Tyyppi.Value{value: %__MODULE__{} = value}), do: generation(value)
+      def generation(%Value{value: %__MODULE__{} = value}), do: generation(value)
 
       def generation(%__MODULE__{} = this) do
-        prop_test = Tyyppi.Value.Generations.prop_test()
+        prop_test = Value.Generations.prop_test()
 
         this
         |> do_generation(@fields)
