@@ -48,7 +48,7 @@ defmodule Tyyppi.Value.Coercions do
          do: {:error, "Expected Date() or binary() or erlang date tuple. Reason: [#{reason}]."}
   end
 
-  def date(value) when is_binary(value) do
+  def date(<<value::binary-size(10), _::binary>>) do
     with {:error, reason} <- Date.from_iso8601(value),
          do: {:error, "Expected Date() or binary() or erlang date tuple. Reason: [#{reason}]."}
   end

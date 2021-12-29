@@ -96,6 +96,7 @@ defmodule Test.Tyyppi.Value do
     test "date" do
       assert is_nil(get_in(Value.date(42), [:value]))
       assert ~D[1973-09-30] == get_in(Value.date("1973-09-30"), [:value])
+      assert ~D[1973-09-30] == get_in(Value.date("1973-09-30T00:00:00Z"), [:value])
       assert ~D[1973-09-30] == get_in(Value.date({1973, 9, 30}), [:value])
 
       assert %{
