@@ -80,6 +80,15 @@ defmodule Test.Tyyppi.Value do
       assert %{__meta__: %{errors: [{:coercion, _error}]}} = Value.integer("42.1")
     end
 
+    test "float" do
+      assert 42.0 == get_in(Value.float(42), [:value])
+      assert 42.0 == get_in(Value.float("42"), [:value])
+      assert 42.1 == get_in(Value.float(42.1), [:value])
+      assert 42.1 == get_in(Value.float("42.1"), [:value])
+
+      assert %{__meta__: %{errors: [{:coercion, _error}]}} = Value.float("42.")
+    end
+
     test "timeout / pos_integer" do
       assert 42 == get_in(Value.non_neg_integer(42), [:value])
       assert 42 == get_in(Value.non_neg_integer("42"), [:value])

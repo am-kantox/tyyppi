@@ -30,6 +30,8 @@ defmodule Tyyppi.Value.Generations do
   def pos_integer, do: @prop_test.positive_integer() |> @prop_test.map(&Value.pos_integer/1)
   def pos_integer(top) when is_integer(top) and top > 0, do: integer(1..top)
 
+  def float, do: @prop_test.float() |> @prop_test.map(&Value.float/1)
+
   def date, do: date(Date.range(~D[1970-01-01], ~D[2038-01-01]))
 
   def date(range) do

@@ -40,6 +40,21 @@ defmodule Tyyppi.Value.Coercions do
   def integer(_not_integer),
     do: {:error, "Expected number() or binary()"}
 
+  @spec float(value :: any()) :: Tyyppi.Valuable.either()
+  def float(n) when is_integer(n), do: {:ok, n / 1}
+  def float(n) when is_number(n), do: {:ok, n}
+
+  def float(binary) when is_binary(binary) do
+    case Float.parse(binary) do
+      {f, ""} -> {:ok, f}
+      {f, tail} -> {:error, ~s|Trailing symbols while parsing float [#{f}]: "#{tail}"|}
+      :error -> {:error, ~s|Error parsing float: "#{binary}"|}
+    end
+  end
+
+  def float(_not_float),
+    do: {:error, "Expected number() or binary()"}
+
   @spec date(value :: any()) :: Tyyppi.Valuable.either()
   def date(%Date{} = d), do: {:ok, d}
 

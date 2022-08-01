@@ -343,6 +343,20 @@ defmodule Tyyppi.Value do
   def pos_integer(options) when is_list(options), do: put_options(pos_integer(), options)
   def pos_integer(pos_integer), do: pos_integer(value: pos_integer)
 
+  @spec float() :: t()
+  @doc "Creates a not defined `float()` wrapped by `Tyyppi.Value`"
+  def float,
+    do: %Tyyppi.Value{
+      type: Tyyppi.parse(float()),
+      coercion: &Coercions.float/1,
+      generation: &Generations.float/0
+    }
+
+  @spec float(options :: any() | [factory_option()]) :: t()
+  @doc "Factory for `float()` wrapped by `Tyyppi.Value`"
+  def float(options) when is_list(options), do: put_options(float(), options)
+  def float(float), do: float(value: float)
+
   @spec date() :: t()
   @doc "Creates a not defined `date()` wrapped by `Tyyppi.Value`"
   def date,
