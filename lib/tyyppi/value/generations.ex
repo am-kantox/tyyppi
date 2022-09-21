@@ -1,7 +1,7 @@
 defmodule Tyyppi.Value.Generations do
   @moduledoc false
 
-  @prop_test Application.get_env(:tyyppi, :prop_testing_backend, StreamData)
+  @prop_test Application.compile_env(:tyyppi, :prop_testing_backend, StreamData)
 
   alias Tyyppi.Value
 
