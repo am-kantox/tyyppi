@@ -107,6 +107,13 @@ defmodule Tyyppi.Struct do
                   source: :user_type,
                   quoted:
                     quote(do: unquote(__MODULE__).unquote(type)(unquote_splicing(param_names)))
+                    |> Macro.prewalk(fn
+                      {id, meta, params} when is_list(meta) ->
+                        {id, Enum.reject(meta, &match?({:generated, true}, &1)), params}
+
+                      other ->
+                        other
+                    end)
               }
           end
         end
@@ -138,6 +145,7 @@ defmodule Tyyppi.Struct do
       end
 
     [
+      jason,
       declaration,
       validation,
       casts_and_validates,
@@ -146,8 +154,7 @@ defmodule Tyyppi.Struct do
       as_value,
       collectable,
       enumerable,
-      flatten,
-      jason
+      flatten
     ]
   end
 
@@ -192,8 +199,8 @@ defmodule Tyyppi.Struct do
           {atom(), T.ast()} | [{atom(), T.ast()}]
   def typespec({k, type}, _env) when is_atom(type), do: {k, {type, [], []}}
 
-  def typespec({k, {{:., _, [aliases, type]}, _, args}}, env) when is_atom(type),
-    do: {k, {{:., [], [Macro.expand(aliases, env), type]}, [], args}}
+  def typespec({k, {{:., meta, [aliases, type]}, submeta, args}}, env) when is_atom(type),
+    do: {k, {{:., meta, [Macro.expand(aliases, env), type]}, submeta, args}}
 
   def typespec({k, {module, type}}, env) when is_atom(module) and is_atom(type) do
     modules = module |> Module.split() |> Enum.map(&:"#{&1}")

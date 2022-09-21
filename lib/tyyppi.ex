@@ -247,7 +247,7 @@ defmodule Tyyppi do
       ...> Tyyppi.of_type?(type, :foo)
       false
   """
-  if Application.get_env(:tyyppi, :strict, false) do
+  if Application.compile_env(:tyyppi, :strict, false) do
     def of_type?(%T{module: module, definition: definition}, term),
       do: Matchers.of?(module, definition, term)
 

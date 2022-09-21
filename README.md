@@ -15,6 +15,7 @@ end
 ```
 
 ## Changelog
+- **`0.12.3`** — update to modern stack + eliminate warnings
 - **`0.12.2`** — `Tyyppi.Value.float`
 - **`0.12.0`** — `Tyyppi.Value.date`
 - **`0.11.1`** — `{Struct,Value}.valid?/1`, `Struct.errors/1`
